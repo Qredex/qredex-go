@@ -1,0 +1,68 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+jobs:
+  release:
+    name: Create Release
+    runs-on: ubuntu-latest
+    
+    permissions:
+      contents: write
+      discussions: write
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
+
+    - name: Set up Go
+      uses: actions/setup-go@v5
+      with:
+        go-version: '1.23'
+        cache: true
+
+    - name: Build
+      run: go build -v ./...
+
+    - name: Test
+      run: go test -v ./...
+
+    - name: Extract release notes
+      id: release_notes
+      uses: ffurrer2/extract-release-notes@v2
+      with:
+        changelog_path: CHANGELOG.md
+
+    - name: Create GitHub Release
+      uses: softprops/action-gh-release@v1
+      with:
+        name: Release ${{ github.ref_name }}
+        body: |
+          ${{ steps.release_notes.outputs.release_notes }}
+          
+          ## Installation
+          
+          ```bash
+          go get github.com/qredex/sdk-go@${{ github.ref_name }}
+          ```
+          
+          ## Full Changelog
+          
+          https://github.com/qredex/sdk-go/compare/${{ github.event.release.tag_name }}...${{ github.ref_name }}
+        draft: false
+        prerelease: false
+        generate_release_notes: false
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+    - name: Notify Packagist
+      if: ${{ vars.PACKAGIST_WEBHOOK_URL != '' }}
+      run: |
+        curl -XPOST -H 'Content-Type: application/json' \
+          '${{ secrets.PACKAGIST_WEBHOOK_URL }}' \
+          -d '{"username":"qredex","api_token":"${{ secrets.PACKAGIST_API_TOKEN }}","update":true}'
