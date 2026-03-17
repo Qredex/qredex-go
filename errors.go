@@ -1,20 +1,29 @@
-// Copyright (C) 2026 — 2026, Qredex, LTD. All Rights Reserved.
+//	▄▄▄▄
+//	▄█▀▀███▄▄              █▄
+//	██    ██ ▄             ██
+//	██    ██ ████▄▄█▀█▄ ▄████ ▄█▀█▄▀██ ██▀
+//	██  ▄ ██ ██   ██▄█▀ ██ ██ ██▄█▀  ███
+//	 ▀█████▄▄█▀  ▄▀█▄▄▄▄█▀███▄▀█▄▄▄▄██ ██▄
+//	     ▀█
 //
-// DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
+//	Copyright (C) 2026 — 2026, Qredex, LTD. All Rights Reserved.
 //
-// Licensed under the Apache License, Version 2.0. See LICENSE for the full license text.
-// You may not use this file except in compliance with that License.
-// Unless required by applicable law or agreed to in writing, software distributed under the
-// License is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND,
-// either express or implied. See the License for the specific language governing permissions
-// and limitations under the License.
+//	DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
 //
-// If you need additional information or have any questions, please email: copyright@qredex.com
+//	Licensed under the Apache License, Version 2.0. See LICENSE for the full license text.
+//	You may not use this file except in compliance with that License.
+//	Unless required by applicable law or agreed to in writing, software distributed under the
+//	License is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND,
+//	either express or implied. See the License for the specific language governing permissions
+//	and limitations under the License.
+//
+//	If you need additional information or have any questions, please email: copyright@qredex.com
 
 package qredex
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -100,51 +109,64 @@ func (e *NetworkError) Unwrap() error { return e.Cause }
 
 // IsAuthenticationError reports whether err is an AuthenticationError (HTTP 401).
 func IsAuthenticationError(err error) bool {
-	_, ok := err.(*AuthenticationError)
+	var authenticationError *AuthenticationError
+	ok := errors.As(err, &authenticationError)
 	return ok
 }
 
 // IsAuthorizationError reports whether err is an AuthorizationError (HTTP 403).
 func IsAuthorizationError(err error) bool {
-	_, ok := err.(*AuthorizationError)
+	var authorizationError *AuthorizationError
+	ok := errors.As(err, &authorizationError)
 	return ok
 }
 
 // IsValidationError reports whether err is a ValidationError (HTTP 400).
 func IsValidationError(err error) bool {
-	_, ok := err.(*ValidationError)
+	var validationError *ValidationError
+	ok := errors.As(err, &validationError)
 	return ok
 }
 
 // IsNotFoundError reports whether err is a NotFoundError (HTTP 404).
 func IsNotFoundError(err error) bool {
-	_, ok := err.(*NotFoundError)
+	var notFoundError *NotFoundError
+	ok := errors.As(err, &notFoundError)
 	return ok
 }
 
 // IsConflictError reports whether err is a ConflictError (HTTP 409).
 func IsConflictError(err error) bool {
-	_, ok := err.(*ConflictError)
+	var conflictError *ConflictError
+	ok := errors.As(err, &conflictError)
 	return ok
 }
 
 // IsRateLimitError reports whether err is a RateLimitError (HTTP 429).
 func IsRateLimitError(err error) bool {
-	_, ok := err.(*RateLimitError)
+	var rateLimitError *RateLimitError
+	ok := errors.As(err, &rateLimitError)
 	return ok
 }
 
 // IsNetworkError reports whether err is a NetworkError (transport-level failure).
 func IsNetworkError(err error) bool {
-	_, ok := err.(*NetworkError)
+	var networkError *NetworkError
+	ok := errors.As(err, &networkError)
 	return ok
 }
 
 // IsAPIError reports whether err is any API-originated Qredex error (non-network).
 func IsAPIError(err error) bool {
-	switch err.(type) {
-	case *APIError, *AuthenticationError, *AuthorizationError, *ValidationError,
-		*NotFoundError, *ConflictError, *RateLimitError:
+	var APIError *APIError
+	var authenticationError *AuthenticationError
+	var authorizationError *AuthorizationError
+	var validationError *ValidationError
+	var notFoundError *NotFoundError
+	var conflictError *ConflictError
+	var rateLimitError *RateLimitError
+	switch {
+	case errors.As(err, &APIError), errors.As(err, &authenticationError), errors.As(err, &authorizationError), errors.As(err, &validationError), errors.As(err, &notFoundError), errors.As(err, &conflictError), errors.As(err, &rateLimitError):
 		return true
 	}
 	return false

@@ -99,11 +99,11 @@ Use the minimum context, tokens, tool calls, edits, and validation needed to com
 
 ## System Overview
 
-This repository builds the Qredex PHP server SDK.
+This repository builds the Qredex Go server SDK.
 
 ### Product purpose
 
-The PHP SDK exists to make Qredex machine-to-machine integrations easy to adopt and hard to misuse.
+The Go SDK exists to make Qredex machine-to-machine integrations easy to adopt and hard to misuse.
 
 It should help merchant backends and partner platforms:
 
@@ -250,19 +250,22 @@ Use plan mode whenever work is more than 3 steps or touches architecture.
 
 ### SDK design expectations
 
-- Prefer clear classes and value objects over loose helper sprawl.
-- Avoid massive inheritance trees.
+- Prefer clear types and value objects over generic interfaces.
+- Avoid massive interface hierarchies.
 - Avoid framework-specific coupling unless explicitly requested.
-- Support normal PHP backend usage first.
-- If using arrays for request input, validate and normalize consistently.
-- If introducing DTOs/value objects, use them because they improve correctness, not because they look formal.
+- Support normal Go backend usage first (net/http, context patterns).
+- If accepting request input as structs, validate and normalize consistently.
+- If introducing abstractions, use them because they improve correctness, not because they look formal.
+- Use Go's error handling idioms (error returns, error wrapping with fmt.Errorf, errors.Is/As).
+- Prefer receiver methods on types over package-level functions when the operation logically belongs to the type.
 
 ### HTTP / transport expectations
 
 - Keep transport swappable only if there is a real benefit.
 - Do not over-abstract the HTTP layer.
 - Make timeouts, retries, base URL/environment, and auth observable/configurable.
-- Preserve raw API error details in parsed exceptions.
+- Preserve raw API error details in typed error responses.
+- Use http.RoundTripper for test doubles to enable dependency injection.
 
 ## Testing Guidelines
 
@@ -270,7 +273,7 @@ Use plan mode whenever work is more than 3 steps or touches architecture.
 
 At minimum cover:
 
-- token issuance
+- token issuance (OAuth flow)
 - create/get/list creator
 - create/get/list link
 - link stats where in scope
@@ -283,80 +286,73 @@ At minimum cover:
 
 ### Test types
 
-- **Unit tests** for public API behavior, auth behavior, error parsing, and serialization
+- **Unit tests** (`*_test.go`) for public API behavior, auth behavior, error parsing, and serialization
 - **Contract tests** for transport/request mapping against fixture responses or mock servers
 - **Live tests** only as explicit opt-in, never as a default dependency for local or CI success
 
 ### Test rules
 
 - Fixes require regression tests.
-- Do not depend on external environments unless explicitly configured.
-- Run `composer check` (tests + PHPStan) as part of validation.
+- Do not depend on external environments unless explicitly configured via `t.Setenv()` or env var overrides.
+- Run `go test ./...`, `go vet ./...`, and `golangci-lint run ./...` as part of validation.
 - Report exactly which validation commands were run and whether they passed.
 
 ### Test patterns in this repo
 
-- **`FakeTransport`** (`tests/FakeTransport.php`) is the canonical test double. It implements `HttpTransportInterface`, accepts queued `TransportResponse` or `\Throwable` via `push()`, and records sent `TransportRequest` objects on `$requests`. Always use this instead of mocking Guzzle directly.
-- **`QredexTest`** — core SDK behavior: init, bootstrap, resource CRUD, error mapping.
-- **`CanonicalFlowTest`** — end-to-end IIT → PIT → paid order → refund flow with `FakeTransport`.
-- **`TransportAndErrorTest`** — transport-layer behavior: retries, error parsing, network failures.
-- **`ConfigTest`** — `QredexConfig` validation: timeout bounds, user-agent suffix, header guards, env parsing, `fromEnvironment()` wiring.
-- **`ErrorFactoryTest`** — HTTP status → typed exception mapping (`ApiError`, `AuthenticationError`, `AuthorizationError`, `NotFoundError`, `ConflictError`, `RateLimitError`, `ApiValidationError`).
-- **`ModelTest`** — `fromArray()` deserialization for all model value objects (`Creator`, `Link`, `LinkStats`, `InfluenceIntent`, `PurchaseIntent`, `OrderAttribution`, `Page`, `Timing`).
-- **`RequestObjectTest`** — `toArray()` serialization and validation for all request objects (`CreateCreatorRequest`, `CreateLinkRequest`, `IssueInfluenceIntentTokenRequest`, `LockPurchaseIntentRequest`, `RecordPaidOrderRequest`, `RecordRefundRequest`, filter objects).
-- **`ValidatorTest`** — internal `Validator` rules for all write operations (required fields, UUID format, amount bounds).
-- **`LiveIntegrationTest`** — real API calls; PHPUnit group `live`, excluded by default. Requires `QREDEX_CLIENT_ID` / `QREDEX_CLIENT_SECRET` env vars.
-- To instantiate the SDK in tests, use `QredexConfig::fromEnvironment()` with a `transport:` override to inject `FakeTransport`. Push an OAuth token response first, then the resource response:
-
+- **`FakeTransport`** (`fake_transport_test.go`) is the canonical test double. It implements `http.RoundTripper`, accepts queued `TransportResponse` or error via `Push()`, and records sent `TransportRequest` objects on `Requests()`. Always use this instead of mocking the http package directly.
+- **`qredex_test.go`** — core SDK behavior: `Bootstrap()`, `New()`, config validation, resource access, error mapping.
+- **`*_test.go` files** — integration and contract tests using `FakeTransport` to verify request serialization and response deserialization.
+- **Error type tests** — HTTP status → typed error mapping (`APIError`, `AuthenticationError`, `AuthorizationError`, `NotFoundError`, `ConflictError`, `RateLimitError`, `ValidationError`).
+- **Model tests** — `UnmarshalJSON` deserialization and `MarshalJSON` serialization for all model types.
+- **Request validation tests** — validation rules for all write operations (required fields, UUID format, amount bounds).
+- **Example tests** (`example_test.go`) — demonstrate canonical usage patterns with `Example_*` functions.
+- To use `FakeTransport` in tests: create a `Config`, set `HTTPClient` to one wrapping `FakeTransport`, then push OAuth token response first, then resource responses.
 
 ### Environment variables
 
-`QredexConfig::fromEnvironment()` reads these env vars (all optional except where noted):
+The SDK reads these env vars via `Bootstrap()` or can be set explicitly in `Config`:
 
 | Variable | Required | Description |
 |---|---|---|
 | `QREDEX_CLIENT_ID` | **Yes** | OAuth client ID for Integrations auth |
 | `QREDEX_CLIENT_SECRET` | **Yes** | OAuth client secret |
-| `QREDEX_SCOPE` | No | OAuth scope string (defaults to `QredexScope` passed in code) |
+| `QREDEX_SCOPE` | No | Space-separated OAuth scopes (e.g., `direct:api direct:creators:write`) |
 | `QREDEX_ENVIRONMENT` | No | `production` (default), `staging`, or `development` |
 | `QREDEX_BASE_URL` | No | Override base URL (bypasses environment resolution) |
 | `QREDEX_TIMEOUT_MS` | No | HTTP timeout in milliseconds (default: `10000`) |
 
-### QredexScope values
+### Scope values
 
-`QredexScope` (`src/Auth/QredexScope.php`) is a string-backed enum:
+Scope is a string constant representing OAuth scopes. Canonical values:
 
-| Case | Value |
+| Constant | Value |
 |---|---|
-| `API` | `direct:api` |
-| `LINKS_READ` | `direct:links:read` |
-| `LINKS_WRITE` | `direct:links:write` |
-| `CREATORS_READ` | `direct:creators:read` |
-| `CREATORS_WRITE` | `direct:creators:write` |
-| `ORDERS_READ` | `direct:orders:read` |
-| `ORDERS_WRITE` | `direct:orders:write` |
-| `INTENTS_READ` | `direct:intents:read` |
-| `INTENTS_WRITE` | `direct:intents:write` |
+| `ScopeAPI` | `direct:api` |
+| `ScopeLinksRead` | `direct:links:read` |
+| `ScopeLinksWrite` | `direct:links:write` |
+| `ScopeCreatorsRead` | `direct:creators:read` |
+| `ScopeCreatorsWrite` | `direct:creators:write` |
+| `ScopeOrdersRead` | `direct:orders:read` |
+| `ScopeOrdersWrite` | `direct:orders:write` |
+| `ScopeIntentsRead` | `direct:intents:read` |
+| `ScopeIntentsWrite` | `direct:intents:write` |
 
-### QredexEnvironment values
+### Environment values
 
-`QredexEnvironment` (`src/Config/QredexEnvironment.php`) is a string-backed enum:
+Environment is a string constant representing the Qredex API environment:
 
-| Case | Base URL |
+| Constant | Base URL |
 |---|---|
-| `PRODUCTION` | `https://api.qredex.com` |
-| `STAGING` | `https://staging-api.qredex.com` |
-| `DEVELOPMENT` | `http://localhost:8080` |
+| `Production` | `https://api.qredex.com` |
+| `Staging` | `https://staging-api.qredex.com` |
+| `Development` | `http://localhost:8080` |
 
 ### CI/CD workflows
 
 GitHub Actions workflows in `.github/workflows/`:
 
-- **`ci.yml`** — runs on PR/push: `composer validate --strict`, `composer test`, `composer analyse`
-- **`auto-release.yml`** — creates GitHub Release from semantic-version tags (`v*`)
-- **`create-release-tag.yml`** — manual workflow to create a release tag
-- **`live-tests.yml`** — opt-in live integration tests against real API
-- **`publish-packagist.yml`** — notifies Packagist via `PACKAGIST_WEBHOOK_URL` on release
+- **`ci.yml`** — runs on PR/push: `go build`, `go test -race`, `go vet`, `golangci-lint`, `go fmt`
+- **`release.yml`** — creates GitHub Release from semantic-version tags (`v*`)
 
 ## Documentation Rules
 
@@ -395,16 +391,16 @@ When preparing a release or making release-related documentation updates, you mu
 
 - Read `docs/RELEASING.md` first. Follow the documented process exactly.
 - Do not invent a new release process.
-- The release source of truth is `Qredex::SDK_VERSION` in `src/Qredex.php`. Use `./bump-version.sh <version>` or `composer version:bump <version>` for version bumps.
-- Review git history (`git log`) before writing or updating changelog entries.
+- The release source of truth is `SDKVersion` constant in `config.go`. Update it manually for each release.
+- Review git history (`git log`) before writing or updating changelog entries: `git log --oneline <lastTag>..HEAD`
 - `CHANGELOG.md` must exist. If it does not, create it immediately.
 - All changelog entries must be grounded in actual repository history and real implemented changes.
 - Do not invent versions, dates, entries, or release notes.
 - If the release guide conflicts with the repository state, stop and surface the conflict instead of guessing.
-- Run `composer check` as the pre-release verification step. The release workflow also runs `composer validate --strict`, `composer test`, and `composer analyse`.
+- Run `go build ./...`, `go test ./...`, `go vet ./...`, and `golangci-lint run ./...` as the pre-release verification step.
 - Releases are semantic-version Git tags such as `v0.2.0`.
-- GitHub Actions validates tagged releases, creates a GitHub Release, and can optionally notify Packagist through `PACKAGIST_WEBHOOK_URL`.
-- Composer consumers should install tagged releases from Packagist or the GitHub repository source configured in Composer.
+- GitHub Actions validates tagged releases and creates a GitHub Release.
+- Go consumers should install tagged releases: `go get github.com/qredex/sdk-go@v0.2.0`
 
 ## Before Starting Work
 
@@ -531,31 +527,29 @@ Not for:
 
 **ALL created files MUST include the official Qredex Apache-2.0 header used in this repository:**
 
-```php
-/**
- *    ▄▄▄▄
- *  ▄█▀▀███▄▄              █▄
- *  ██    ██ ▄             ██
- *  ██    ██ ████▄▄█▀█▄ ▄████ ▄█▀█▄▀██ ██▀
- *  ██  ▄ ██ ██   ██▄█▀ ██ ██ ██▄█▀  ███
- *   ▀█████▄▄█▀  ▄▀█▄▄▄▄█▀███▄▀█▄▄▄▄██ ██▄
- *        ▀█
- *
- *  Copyright (C) 2026 — 2026, Qredex, LTD. All Rights Reserved.
- *
- *  DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
- *
- *  Licensed under the Apache License, Version 2.0. See LICENSE for the full license text.
- *  You may not use this file except in compliance with that License.
- *  Unless required by applicable law or agreed to in writing, software distributed under the
- *  License is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND,
- *  either express or implied. See the License for the specific language governing permissions
- *  and limitations under the License.
- *
- *  If you need additional information or have any questions, please email: copyright@qredex.com
- */
+```go
+//    ▄▄▄▄
+//  ▄█▀▀███▄▄              █▄
+//  ██    ██ ▄             ██
+//  ██    ██ ████▄▄█▀█▄ ▄████ ▄█▀█▄▀██ ██▀
+//  ██  ▄ ██ ██   ██▄█▀ ██ ██ ██▄█▀  ███
+//   ▀█████▄▄█▀  ▄▀█▄▄▄▄█▀███▄▀█▄▄▄▄██ ██▄
+//        ▀█
+//
+// Copyright (C) 2026 — 2026, Qredex, LTD. All Rights Reserved.
+//
+// DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
+//
+// Licensed under the Apache License, Version 2.0. See LICENSE for the full license text.
+// You may not use this file except in compliance with that License.
+// Unless required by applicable law or agreed to in writing, software distributed under the
+// License is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND,
+// either express or implied. See the License for the specific language governing permissions
+// and limitations under the License.
+//
+// If you need additional information or have any questions, please email: copyright@qredex.com
 ```
 
-**This applies to:** `.php`, `.md`, `.yaml`, `.yml`, `.json` - ALL files.
+**This applies to:** `.go`, `.md`, `.yaml`, `.yml`, `.json` - ALL files.
 
 **Note:** If you create a new file, add this header at the top. If you modify an existing file without the header, add it.
