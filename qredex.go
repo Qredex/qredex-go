@@ -103,7 +103,7 @@ func (cr *CreatorsResource) Create(ctx context.Context, req CreateCreatorRequest
 	var result Creator
 	err := cr.hc.request(ctx, "POST", "/api/v1/integrations/creators", req, &result)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("qredex: creators.create failed: %w", err)
 	}
 	return &result, nil
 }
@@ -113,7 +113,7 @@ func (cr *CreatorsResource) Get(ctx context.Context, creatorID string) (*Creator
 	var result Creator
 	err := cr.hc.request(ctx, "GET", "/api/v1/integrations/creators/"+creatorID, nil, &result)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("qredex: creators.get failed: %w", err)
 	}
 	return &result, nil
 }
@@ -123,7 +123,7 @@ func (cr *CreatorsResource) List(ctx context.Context, req ListCreatorsRequest) (
 	var result CreatorPage
 	err := cr.hc.request(ctx, "GET", "/api/v1/integrations/creators", req, &result)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("qredex: creators.list failed: %w", err)
 	}
 	return &result, nil
 }

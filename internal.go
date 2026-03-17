@@ -150,26 +150,32 @@ func (tp *tokenProvider) clearCache() {
 
 // httpClient manages HTTP requests with auth, retries, and error handling.
 type httpClient struct {
-	baseURL         string
-	httpClient      *http.Client
-	tokenProvider   *tokenProvider
-	userAgentSuffix string
-	timeout         time.Duration
-	retryMax        int
-	retryBaseDelay  time.Duration
-	retryMaxDelay   time.Duration
+	baseURL                string
+	httpClient             *http.Client
+	tokenProvider          *tokenProvider
+	userAgentSuffix        string
+	timeout                time.Duration
+	retryMax               int
+	retryBaseDelay         time.Duration
+	retryMaxDelay          time.Duration
+	logger                 Logger
+	tracer                 Tracer
+	idempotencyKeyProvider IdempotencyKeyProvider
 }
 
 func newHTTPClient(config *Config, httpCli *http.Client, tp *tokenProvider) *httpClient {
 	return &httpClient{
-		baseURL:         config.resolvedBaseURL(),
-		httpClient:      httpCli,
-		tokenProvider:   tp,
-		userAgentSuffix: config.UserAgentSuffix,
-		timeout:         config.resolvedTimeout(),
-		retryMax:        config.resolvedRetryMax(),
-		retryBaseDelay:  config.resolvedRetryBaseDelay(),
-		retryMaxDelay:   config.resolvedRetryMaxDelay(),
+		baseURL:                config.resolvedBaseURL(),
+		httpClient:             httpCli,
+		tokenProvider:          tp,
+		userAgentSuffix:        config.UserAgentSuffix,
+		timeout:                config.resolvedTimeout(),
+		retryMax:               config.resolvedRetryMax(),
+		retryBaseDelay:         config.resolvedRetryBaseDelay(),
+		retryMaxDelay:          config.resolvedRetryMaxDelay(),
+		logger:                 config.Logger,
+		tracer:                 config.Tracer,
+		idempotencyKeyProvider: config.IdempotencyKeyProvider,
 	}
 }
 
@@ -211,6 +217,22 @@ func (hc *httpClient) doRequest(ctx context.Context, method, path string, body i
 	req.Header.Set("User-Agent", userAgent(hc.userAgentSuffix))
 	if !isReadMethod {
 		req.Header.Set("Content-Type", "application/json")
+		if hc.idempotencyKeyProvider != nil {
+			key := hc.idempotencyKeyProvider.GetIdempotencyKey(ctx, method, path, body)
+			if key != "" {
+				req.Header.Set("Idempotency-Key", key)
+			}
+		}
+	}
+	if hc.logger != nil {
+		hc.logger.Printf("[qredex] %s %s", method, rawURL)
+	}
+	if hc.tracer != nil {
+		hc.tracer.Trace("qredex.request", map[string]interface{}{
+			"method":  method,
+			"url":     rawURL,
+			"attempt": attempt,
+		})
 	}
 
 	ctxWithTimeout, cancel := context.WithTimeout(ctx, hc.timeout)

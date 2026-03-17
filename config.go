@@ -100,6 +100,16 @@ const (
 	ScopeIntentsWrite Scope = "direct:intents:write"
 )
 
+// Logger is a minimal logger interface for SDK observability.
+type Logger interface {
+	Printf(format string, v ...interface{})
+}
+
+// Tracer is a minimal tracer interface for SDK observability.
+type Tracer interface {
+	Trace(event string, fields map[string]interface{})
+}
+
 // Config holds all configuration for the Qredex SDK.
 // Build one explicitly with New, or load from environment with Bootstrap.
 type Config struct {
@@ -129,6 +139,14 @@ type Config struct {
 	RetryBaseDelay time.Duration
 	// RetryMaxDelay caps the retry delay. Defaults to 30s.
 	RetryMaxDelay time.Duration
+
+	// Logger is a minimal logger interface for SDK observability.
+	Logger Logger
+	// Tracer is a minimal tracer interface for SDK observability.
+	Tracer Tracer
+
+	// IdempotencyKeyProvider allows injection of idempotency keys for write requests.
+	IdempotencyKeyProvider IdempotencyKeyProvider
 }
 
 func (c *Config) validate() error {
@@ -191,6 +209,77 @@ func (c *Config) scopeString() string {
 		parts[i] = string(s)
 	}
 	return strings.Join(parts, " ")
+}
+
+// ConfigBuilder provides a fluent builder for Config.
+type ConfigBuilder struct {
+	cfg Config
+}
+
+// NewConfigBuilder returns a new ConfigBuilder.
+func NewConfigBuilder() *ConfigBuilder {
+	return &ConfigBuilder{cfg: Config{}}
+}
+
+// WithClientID sets the ClientID.
+func (b *ConfigBuilder) WithClientID(id string) *ConfigBuilder {
+	b.cfg.ClientID = id
+	return b
+}
+
+// WithClientSecret sets the ClientSecret.
+func (b *ConfigBuilder) WithClientSecret(secret string) *ConfigBuilder {
+	b.cfg.ClientSecret = secret
+	return b
+}
+
+// WithScopes sets the OAuth scopes.
+func (b *ConfigBuilder) WithScopes(scopes ...Scope) *ConfigBuilder {
+	b.cfg.Scopes = scopes
+	return b
+}
+
+// WithEnvironment sets the environment.
+func (b *ConfigBuilder) WithEnvironment(env Environment) *ConfigBuilder {
+	b.cfg.Environment = env
+	return b
+}
+
+// WithBaseURL sets the base URL.
+func (b *ConfigBuilder) WithBaseURL(url string) *ConfigBuilder {
+	b.cfg.BaseURL = url
+	return b
+}
+
+// WithHTTPClient sets a custom HTTP client.
+func (b *ConfigBuilder) WithHTTPClient(client *http.Client) *ConfigBuilder {
+	b.cfg.HTTPClient = client
+	return b
+}
+
+// WithTimeout sets the request timeout.
+func (b *ConfigBuilder) WithTimeout(timeout time.Duration) *ConfigBuilder {
+	b.cfg.Timeout = timeout
+	return b
+}
+
+// WithUserAgentSuffix sets the user agent suffix.
+func (b *ConfigBuilder) WithUserAgentSuffix(suffix string) *ConfigBuilder {
+	b.cfg.UserAgentSuffix = suffix
+	return b
+}
+
+// WithRetry configures retry parameters.
+func (b *ConfigBuilder) WithRetry(max int, baseDelay, maxDelay time.Duration) *ConfigBuilder {
+	b.cfg.RetryMax = max
+	b.cfg.RetryBaseDelay = baseDelay
+	b.cfg.RetryMaxDelay = maxDelay
+	return b
+}
+
+// Build returns the constructed Config.
+func (b *ConfigBuilder) Build() Config {
+	return b.cfg
 }
 
 // Bootstrap creates a Qredex instance from environment variables.
