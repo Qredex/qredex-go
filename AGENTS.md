@@ -400,7 +400,7 @@ When preparing a release or making release-related documentation updates, you mu
 - Run `go build ./...`, `go test ./...`, `go vet ./...`, and `golangci-lint run ./...` as the pre-release verification step.
 - Releases are semantic-version Git tags such as `v0.2.0`.
 - GitHub Actions validates tagged releases and creates a GitHub Release.
-- Go consumers should install tagged releases: `go get github.com/qredex/sdk-go@v0.2.0`
+- Go consumers should install tagged releases: `go get github.com/Qredex/qredex-go@v0.2.0`
 
 ## Before Starting Work
 

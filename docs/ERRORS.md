@@ -24,7 +24,7 @@ error
 Use the provided helper functions to detect error types:
 
 ```go
-import "github.com/qredex/sdk-go"
+import "github.com/Qredex/qredex-go"
 
 _, err := q.Creators().Create(ctx, req)
 if err != nil {
@@ -510,4 +510,4 @@ Error: ConflictError [REJECTED_CROSS_SOURCE_DUPLICATE]
 
 - Review the [Integration Guide](INTEGRATION_GUIDE.md) for complete integration walkthrough
 - See the [README](../README.md) for quick start
-- Check [API Reference](https://pkg.go.dev/github.com/qredex/sdk-go) for method documentation
+- Check [API Reference](https://pkg.go.dev/github.com/Qredex/qredex-go) for method documentation

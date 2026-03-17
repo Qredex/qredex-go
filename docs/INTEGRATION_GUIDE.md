@@ -38,13 +38,13 @@ Before integrating the Qredex Go SDK, ensure you have:
 ## Installation
 
 ```bash
-go get github.com/qredex/sdk-go
+go get github.com/Qredex/qredex-go
 ```
 
 Add to your `go.mod`:
 
 ```go
-require github.com/qredex/sdk-go v0.1.0
+require github.com/Qredex/qredex-go v0.1.0
 ```
 
 ---
@@ -69,7 +69,7 @@ package main
 
 import (
     "log"
-    "github.com/qredex/sdk-go"
+    "github.com/Qredex/qredex-go"
 )
 
 func initQredex() (*qredex.Qredex, error) {
@@ -428,7 +428,7 @@ Before deploying to production:
 
 ## Next Steps
 
-- Review the [API Reference](https://pkg.go.dev/github.com/qredex/sdk-go) for detailed method documentation
+- Review the [API Reference](https://pkg.go.dev/github.com/Qredex/qredex-go) for detailed method documentation
 - See [ERRORS.md](ERRORS.md) for comprehensive error handling guidance
 - Check out the [examples/](examples/) directory for complete code samples
 - Contact os@qredex.com for support or questions

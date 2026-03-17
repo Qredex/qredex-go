@@ -105,7 +105,7 @@ git push origin v0.2.0
 
 ### 7. Create GitHub Release
 
-1. Go to https://github.com/qredex/sdk-go/releases
+1. Go to https://github.com/Qredex/qredex-go/releases
 2. Click **Create a new release**
 3. Select the tag you just pushed (`v0.2.0`)
 4. Copy the CHANGELOG.md section for this version as the release description
@@ -178,7 +178,7 @@ Thanks to [@contributor1, @contributor2] for contributions!
 
 ## Full Changelog
 
-https://github.com/qredex/sdk-go/compare/v0.1.0...v0.2.0
+https://github.com/Qredex/qredex-go/compare/v0.1.0...v0.2.0
 ```
 
 ## Troubleshooting
@@ -227,4 +227,4 @@ go mod verify
 For questions about the release process, contact:
 
 - **Email**: os@qredex.com
-- **GitHub**: https://github.com/qredex/sdk-go/issues
+- **GitHub**: https://github.com/Qredex/qredex-go/issues

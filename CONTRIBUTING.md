@@ -23,7 +23,7 @@ Thank you for your interest in contributing. This document describes how to cont
 ## Getting the Code
 
 ```bash
-git clone https://github.com/qredex/sdk-go.git
+git clone https://github.com/Qredex/qredex-go.git
 cd sdk-go
 go mod download
 ```

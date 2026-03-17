@@ -24,7 +24,7 @@ import (
 	"context"
 	"log"
 
-	"github.com/qredex/sdk-go"
+	"github.com/Qredex/qredex-go"
 )
 
 func main() {

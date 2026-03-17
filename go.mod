@@ -1,3 +1,3 @@
-module github.com/qredex/sdk-go
+module github.com/Qredex/qredex-go
 
 go 1.21

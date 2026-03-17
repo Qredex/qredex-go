@@ -1,8 +1,8 @@
 # `@qredex/go`
 
-[![Go Reference](https://pkg.go.dev/badge/github.com/qredex/sdk-go.svg)](https://pkg.go.dev/github.com/qredex/sdk-go)
+[![Go Reference](https://pkg.go.dev/badge/github.com/Qredex/qredex-go.svg)](https://pkg.go.dev/github.com/Qredex/qredex-go)
 [![License](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
-[![Go Report Card](https://goreportcard.com/badge/github.com/qredex/sdk-go)](https://goreportcard.com/report/github.com/qredex/sdk-go)
+[![Go Report Card](https://goreportcard.com/badge/github.com/Qredex/qredex-go)](https://goreportcard.com/report/github.com/Qredex/qredex-go)
 
 The official Qredex Go server SDK for machine-to-machine integrations with the Qredex Integrations API.
 
@@ -38,7 +38,7 @@ This SDK does **not** cover:
 ## Installation
 
 ```bash
-go get github.com/qredex/sdk-go
+go get github.com/Qredex/qredex-go
 ```
 
 ## Quick Start
@@ -52,7 +52,7 @@ package main
 
 import (
     "log"
-    "github.com/qredex/sdk-go"
+    "github.com/Qredex/qredex-go"
 )
 
 func main() {
@@ -90,7 +90,7 @@ package main
 import (
     "context"
     "log"
-    "github.com/qredex/sdk-go"
+    "github.com/Qredex/qredex-go"
 )
 
 func main() {
@@ -232,7 +232,7 @@ q, err := qredex.New(qredex.Config{
 The SDK provides typed errors for different failure categories:
 
 ```go
-import "github.com/qredex/sdk-go"
+import "github.com/Qredex/qredex-go"
 
 _, err := q.Creators().Create(ctx, req)
 if err != nil {
@@ -421,7 +421,7 @@ Requires environment variables:
 
 - [Integration Guide](docs/INTEGRATION_GUIDE.md) — Complete integration walkthrough
 - [Error Handling](docs/ERRORS.md) — Detailed error model documentation
-- [Go Reference](https://pkg.go.dev/github.com/qredex/sdk-go) — API documentation
+- [Go Reference](https://pkg.go.dev/github.com/Qredex/qredex-go) — API documentation
 
 ## Examples
 
