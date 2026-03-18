@@ -392,13 +392,22 @@ func TestCanonicalFlow(t *testing.T) {
 func TestErrorHandling(t *testing.T) {
 	t.Run("AuthenticationError", func(t *testing.T) {
 		transport := NewFakeTransport()
-		// Token request succeeds
+		// Initial token request succeeds.
 		transport.PushResponse(http.StatusOK, map[string]interface{}{
 			"access_token": "test-token",
 			"token_type":   "Bearer",
 			"expires_in":   3600,
 		})
-		// Actual API call fails with 401
+		// Initial API call fails with 401, which triggers a cache clear and one retry.
+		transport.PushResponse(http.StatusUnauthorized, map[string]interface{}{
+			"error_code": "invalid_token",
+			"message":    "The access token is invalid or expired",
+		})
+		transport.PushResponse(http.StatusOK, map[string]interface{}{
+			"access_token": "fresh-token",
+			"token_type":   "Bearer",
+			"expires_in":   3600,
+		})
 		transport.PushResponse(http.StatusUnauthorized, map[string]interface{}{
 			"error_code": "invalid_token",
 			"message":    "The access token is invalid or expired",
@@ -436,7 +445,7 @@ func TestErrorHandling(t *testing.T) {
 		qredex, _ := createTestQredex(transport)
 		ctx := context.Background()
 
-		_, err := qredex.Creators().Create(ctx, CreateCreatorRequest{})
+		_, err := qredex.Creators().Create(ctx, CreateCreatorRequest{Handle: "alice"})
 
 		if err == nil {
 			t.Fatal("Expected error, got nil")

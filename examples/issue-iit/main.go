@@ -1,15 +1,23 @@
-// Copyright (C) 2026 — 2026, Qredex, LTD. All Rights Reserved.
+//	▄▄▄▄
+//	▄█▀▀███▄▄              █▄
+//	██    ██ ▄             ██
+//	██    ██ ████▄▄█▀█▄ ▄████ ▄█▀█▄▀██ ██▀
+//	██  ▄ ██ ██   ██▄█▀ ██ ██ ██▄█▀  ███
+//	 ▀█████▄▄█▀  ▄▀█▄▄▄▄█▀███▄▀█▄▄▄▄██ ██▄
+//	     ▀█
 //
-// DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
+//	Copyright (C) 2026 — 2026, Qredex, LTD. All Rights Reserved.
 //
-// Licensed under the Apache License, Version 2.0. See LICENSE for the full license text.
-// You may not use this file except in compliance with that License.
-// Unless required by applicable law or agreed to in writing, software distributed under the
-// License is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND,
-// either express or implied. See the License for the specific language governing permissions
-// and limitations under the License.
+//	DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
 //
-// If you need additional information or have any questions, please email: copyright@qredex.com
+//	Licensed under the Apache License, Version 2.0. See LICENSE for the full license text.
+//	You may not use this file except in compliance with that License.
+//	Unless required by applicable law or agreed to in writing, software distributed under the
+//	License is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND,
+//	either express or implied. See the License for the specific language governing permissions
+//	and limitations under the License.
+//
+//	If you need additional information or have any questions, please email: copyright@qredex.com
 
 // Package main demonstrates issuing an Influence Intent Token (IIT) via the
 // Qredex Integrations API.
@@ -48,19 +56,16 @@ func main() {
 
 	iit, err := q.Intents().IssueInfluenceIntentToken(ctx, qredex.IssueInfluenceIntentTokenRequest{
 		LinkID:      linkID,
-		LandingPath: strPtr("/collections/spring"),
+		LandingPath: qredex.String("/collections/spring"),
 		// Optionally capture visitor signals for integrity scoring.
-		// IPHash:        strPtr(hashIP(r.RemoteAddr)),
-		// UserAgentHash: strPtr(hashUA(r.Header.Get("User-Agent"))),
-		// Referrer:      strPtr(r.Referer()),
+		// IPHash:        qredex.String(hashIP(r.RemoteAddr)),
+		// UserAgentHash: qredex.String(hashUA(r.Header.Get("User-Agent"))),
+		// Referrer:      qredex.String(r.Referer()),
 	})
 	if err != nil {
 		log.Fatalf("Failed to issue IIT: %v", err)
 	}
 
 	log.Printf("Issued IIT: token_id=%s", iit.TokenID)
-	log.Printf("  Token (first 20 chars): %.20s...", iit.Token)
 	log.Printf("  Expires at: %s", iit.ExpiresAt)
 }
-
-func strPtr(s string) *string { return &s }

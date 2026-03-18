@@ -1,15 +1,23 @@
-// Copyright (C) 2026 — 2026, Qredex, LTD. All Rights Reserved.
+//	▄▄▄▄
+//	▄█▀▀███▄▄              █▄
+//	██    ██ ▄             ██
+//	██    ██ ████▄▄█▀█▄ ▄████ ▄█▀█▄▀██ ██▀
+//	██  ▄ ██ ██   ██▄█▀ ██ ██ ██▄█▀  ███
+//	 ▀█████▄▄█▀  ▄▀█▄▄▄▄█▀███▄▀█▄▄▄▄██ ██▄
+//	     ▀█
 //
-// DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
+//	Copyright (C) 2026 — 2026, Qredex, LTD. All Rights Reserved.
 //
-// Licensed under the Apache License, Version 2.0. See LICENSE for the full license text.
-// You may not use this file except in compliance with that License.
-// Unless required by applicable law or agreed to in writing, software distributed under the
-// License is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND,
-// either express or implied. See the License for the specific language governing permissions
-// limitations under the License.
+//	DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
 //
-// If you need additional information or have any questions, please email: copyright@qredex.com
+//	Licensed under the Apache License, Version 2.0. See LICENSE for the full license text.
+//	You may not use this file except in compliance with that License.
+//	Unless required by applicable law or agreed to in writing, software distributed under the
+//	License is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND,
+//	either express or implied. See the License for the specific language governing permissions
+//	and limitations under the License.
+//
+//	If you need additional information or have any questions, please email: copyright@qredex.com
 
 // Package main demonstrates the complete canonical Qredex integration flow:
 // Create Creator → Create Link → Issue IIT → Lock PIT → Record Paid Order → Record Refund
@@ -33,6 +41,8 @@ func main() {
 
 	if *dryRun {
 		log.Println("Running in dry-run mode - no API calls will be made")
+		log.Println("Canonical flow: create creator -> create link -> issue IIT -> lock PIT -> record paid order -> record refund")
+		return
 	}
 
 	// Initialize Qredex SDK from environment
@@ -47,8 +57,8 @@ func main() {
 	log.Println("Step 1: Creating creator...")
 	creator, err := q.Creators().Create(ctx, qredex.CreateCreatorRequest{
 		Handle:      fmt.Sprintf("demo-%d", time.Now().Unix()),
-		DisplayName: strPtr("Demo Creator"),
-		Email:       strPtr("demo@example.com"),
+		DisplayName: qredex.String("Demo Creator"),
+		Email:       qredex.String("demo@example.com"),
 	})
 	if err != nil {
 		log.Fatalf("Failed to create creator: %v", err)
@@ -67,7 +77,7 @@ func main() {
 		CreatorID:             creator.ID,
 		LinkName:              "demo-spring-launch",
 		DestinationPath:       "/products/spring",
-		AttributionWindowDays: intPtr(30),
+		AttributionWindowDays: qredex.Int(30),
 	})
 	if err != nil {
 		log.Fatalf("Failed to create link: %v", err)
@@ -79,19 +89,18 @@ func main() {
 	log.Println("Step 3: Issuing Influence Intent Token (IIT)...")
 	iit, err := q.Intents().IssueInfluenceIntentToken(ctx, qredex.IssueInfluenceIntentTokenRequest{
 		LinkID:      link.ID,
-		LandingPath: strPtr("/products/spring"),
+		LandingPath: qredex.String("/products/spring"),
 	})
 	if err != nil {
 		log.Fatalf("Failed to issue IIT: %v", err)
 	}
 	log.Printf("✓ Issued IIT: %s", iit.TokenID)
-	log.Printf("  Token: %s...", iit.Token[:20])
 
 	// Step 4: Lock a Purchase Intent Token (PIT)
 	log.Println("Step 4: Locking Purchase Intent Token (PIT)...")
 	pit, err := q.Intents().LockPurchaseIntent(ctx, qredex.LockPurchaseIntentRequest{
 		Token:  iit.Token,
-		Source: strPtr("demo-backend"),
+		Source: qredex.String("demo-backend"),
 	})
 	if err != nil {
 		log.Fatalf("Failed to lock PIT: %v", err)
@@ -104,11 +113,11 @@ func main() {
 	order, err := q.Orders().RecordPaidOrder(ctx, qredex.RecordPaidOrderRequest{
 		StoreID:             storeID,
 		ExternalOrderID:     fmt.Sprintf("demo-order-%d", time.Now().Unix()),
-		OrderNumber:         strPtr("DEMO-001"),
+		OrderNumber:         qredex.String("DEMO-001"),
 		Currency:            "USD",
-		TotalPrice:          floatPtr(99.99),
+		TotalPrice:          qredex.Float64(99.99),
 		PaidAt:              &[]time.Time{time.Now()}[0],
-		PurchaseIntentToken: strPtr(pit.Token),
+		PurchaseIntentToken: qredex.String(pit.Token),
 	})
 	if err != nil {
 		log.Fatalf("Failed to record paid order: %v", err)
@@ -127,7 +136,7 @@ func main() {
 		StoreID:          storeID,
 		ExternalOrderID:  order.ExternalOrderID,
 		ExternalRefundID: fmt.Sprintf("demo-refund-%d", time.Now().Unix()),
-		RefundTotal:      floatPtr(25.00),
+		RefundTotal:      qredex.Float64(25.00),
 		RefundedAt:       &[]time.Time{time.Now()}[0],
 	})
 	if err != nil {
@@ -144,8 +153,3 @@ func main() {
 	log.Printf("Order: %s (%s)", order.ID, order.ResolutionStatus)
 	log.Printf("Refund: %s", refund.ID)
 }
-
-// Helper functions
-func strPtr(s string) *string     { return &s }
-func intPtr(i int) *int           { return &i }
-func floatPtr(f float64) *float64 { return &f }

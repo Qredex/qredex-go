@@ -1,15 +1,23 @@
-// Copyright (C) 2026 — 2026, Qredex, LTD. All Rights Reserved.
+//	▄▄▄▄
+//	▄█▀▀███▄▄              █▄
+//	██    ██ ▄             ██
+//	██    ██ ████▄▄█▀█▄ ▄████ ▄█▀█▄▀██ ██▀
+//	██  ▄ ██ ██   ██▄█▀ ██ ██ ██▄█▀  ███
+//	 ▀█████▄▄█▀  ▄▀█▄▄▄▄█▀███▄▀█▄▄▄▄██ ██▄
+//	     ▀█
 //
-// DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
+//	Copyright (C) 2026 — 2026, Qredex, LTD. All Rights Reserved.
 //
-// Licensed under the Apache License, Version 2.0. See LICENSE for the full license text.
-// You may not use this file except in compliance with that License.
-// Unless required by applicable law or agreed to in writing, software distributed under the
-// License is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND,
-// either express or implied. See the License for the specific language governing permissions
-// and limitations under the License.
+//	DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
 //
-// If you need additional information or have any questions, please email: copyright@qredex.com
+//	Licensed under the Apache License, Version 2.0. See LICENSE for the full license text.
+//	You may not use this file except in compliance with that License.
+//	Unless required by applicable law or agreed to in writing, software distributed under the
+//	License is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND,
+//	either express or implied. See the License for the specific language governing permissions
+//	and limitations under the License.
+//
+//	If you need additional information or have any questions, please email: copyright@qredex.com
 
 // Package main demonstrates locking a Purchase Intent Token (PIT) via the
 // Qredex Integrations API.
@@ -48,7 +56,7 @@ func main() {
 
 	pit, err := q.Intents().LockPurchaseIntent(ctx, qredex.LockPurchaseIntentRequest{
 		Token:  iitToken,
-		Source: strPtr("backend-checkout"),
+		Source: qredex.String("backend-checkout"),
 	})
 	if err != nil {
 		log.Fatalf("Failed to lock PIT: %v", err)
@@ -64,8 +72,5 @@ func main() {
 	if pit.WindowStatus != nil {
 		log.Printf("  Window: %s", *pit.WindowStatus)
 	}
-	log.Printf("  PIT token (first 20 chars): %.20s...", pit.Token)
-	// Store pit.Token alongside the order to submit for attribution.
+	log.Printf("  Store the raw PIT token securely with the order context for paid-order submission.")
 }
-
-func strPtr(s string) *string { return &s }

@@ -24,14 +24,13 @@ package qredex
 import (
 	"context"
 	"errors"
+	"fmt"
 	"io"
 	"net/http"
 	"net/http/httptest"
 	"strings"
 	"testing"
 	"time"
-
-	"github.com/stretchr/testify/require"
 )
 
 func TestBootstrap_Valid(t *testing.T) {
@@ -44,6 +43,20 @@ func TestBootstrap_Valid(t *testing.T) {
 	}
 	if q == nil {
 		t.Fatal("Expected non-nil Qredex instance")
+	}
+}
+
+func TestBootstrap_TimeoutMS(t *testing.T) {
+	t.Setenv("QREDEX_CLIENT_ID", "test-id")
+	t.Setenv("QREDEX_CLIENT_SECRET", "test-secret")
+	t.Setenv("QREDEX_TIMEOUT_MS", "1500")
+
+	q, err := Bootstrap()
+	if err != nil {
+		t.Fatalf("Bootstrap failed: %v", err)
+	}
+	if got := q.config.resolvedTimeout(); got != 1500*time.Millisecond {
+		t.Fatalf("resolvedTimeout() = %v, want 1500ms", got)
 	}
 }
 
@@ -218,7 +231,7 @@ func TestTokenCache(t *testing.T) {
 
 func TestBackoffDelay(t *testing.T) {
 	base := 100 * time.Millisecond
-	max := 10 * time.Second
+	duration := 10 * time.Second
 
 	tests := []struct {
 		attempt int
@@ -229,12 +242,12 @@ func TestBackoffDelay(t *testing.T) {
 		{2, 400 * time.Millisecond},
 		{3, 800 * time.Millisecond},
 		{5, 3200 * time.Millisecond},
-		{10, 10 * time.Second}, // capped at max
+		{10, 10 * time.Second}, // capped at duration
 	}
 
 	for _, tt := range tests {
 		t.Run("attempt_"+string(rune(tt.attempt+'0')), func(t *testing.T) {
-			if got := backoffDelay(tt.attempt, base, max); got != tt.want {
+			if got := backoffDelay(tt.attempt, base, duration); got != tt.want {
 				t.Errorf("backoffDelay(%d) = %v, want %v", tt.attempt, got, tt.want)
 			}
 		})
@@ -282,7 +295,9 @@ func TestGETQueryParams(t *testing.T) {
 		if r.URL.Path == "/api/v1/auth/token" {
 			w.Header().Set("Content-Type", "application/json")
 			w.WriteHeader(http.StatusOK)
-			w.Write([]byte(`{"access_token":"t","token_type":"Bearer","expires_in":3600}`))
+			if _, err := w.Write([]byte(`{"access_token":"t","token_type":"Bearer","expires_in":3600}`)); err != nil {
+				t.Fatalf("w.Write failed: %v", err)
+			}
 			return
 		}
 		capturedURL = r.URL.RequestURI()
@@ -298,8 +313,8 @@ func TestGETQueryParams(t *testing.T) {
 	cfg := Config{ClientID: "id", ClientSecret: "sec", BaseURL: server.URL}
 	q, _ := New(cfg)
 
-	page := intPtr(2)
-	size := intPtr(5)
+	page := Int(2)
+	size := Int(5)
 	status := CreatorStatusActive
 	_, err := q.Creators().List(context.Background(), ListCreatorsRequest{
 		Page:   page,
@@ -355,7 +370,9 @@ func TestUserAgentSuffix(t *testing.T) {
 	}
 	q, _ := New(cfg)
 
-	q.Creators().List(context.Background(), ListCreatorsRequest{})
+	if _, err := q.Creators().List(context.Background(), ListCreatorsRequest{}); err != nil {
+		t.Fatalf("List failed: %v", err)
+	}
 
 	if !strings.HasPrefix(capturedUA, "qredex-go/") {
 		t.Errorf("User-Agent should start with qredex-go/, got %q", capturedUA)
@@ -373,7 +390,9 @@ func TestRetryOn5xx(t *testing.T) {
 		if r.URL.Path == "/api/v1/auth/token" {
 			w.Header().Set("Content-Type", "application/json")
 			w.WriteHeader(http.StatusOK)
-			w.Write([]byte(`{"access_token":"t","token_type":"Bearer","expires_in":3600}`))
+			if _, err := w.Write([]byte(`{"access_token":"t","token_type":"Bearer","expires_in":3600}`)); err != nil {
+				t.Fatalf("w.Write failed: %v", err)
+			}
 			return
 		}
 		callCount++
@@ -469,4 +488,193 @@ func TestStructToQueryParams(t *testing.T) {
 			t.Errorf("status = %q, want ACTIVE", params.Get("status"))
 		}
 	})
+}
+
+func TestCreateLinkValidation_PreventsNetworkCall(t *testing.T) {
+	transport := NewFakeTransport()
+	qredex, err := createTestQredex(transport)
+	if err != nil {
+		t.Fatalf("createTestQredex failed: %v", err)
+	}
+
+	_, err = qredex.Links().Create(context.Background(), CreateLinkRequest{
+		StoreID:         "store-123",
+		CreatorID:       "creator-123",
+		LinkName:        "launch",
+		DestinationPath: "products/spring",
+	})
+	if err == nil {
+		t.Fatal("expected validation error, got nil")
+	}
+	if !IsRequestValidationError(err) {
+		t.Fatalf("expected RequestValidationError, got %T: %v", err, err)
+	}
+	if got := len(transport.Requests()); got != 0 {
+		t.Fatalf("expected no network calls, got %d", got)
+	}
+}
+
+func TestGetPurchaseIntentValidation_PreventsNetworkCall(t *testing.T) {
+	transport := NewFakeTransport()
+	qredex, err := createTestQredex(transport)
+	if err != nil {
+		t.Fatalf("createTestQredex failed: %v", err)
+	}
+
+	_, err = qredex.Intents().GetPurchaseIntent(context.Background(), "   ")
+	if err == nil {
+		t.Fatal("expected validation error, got nil")
+	}
+	if !IsRequestValidationError(err) {
+		t.Fatalf("expected RequestValidationError, got %T: %v", err, err)
+	}
+	if got := len(transport.Requests()); got != 0 {
+		t.Fatalf("expected no network calls, got %d", got)
+	}
+}
+
+func TestAuthentication401ClearsTokenCacheAndRetriesOnce(t *testing.T) {
+	tokenCalls := 0
+	resourceCalls := 0
+
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch r.URL.Path {
+		case "/api/v1/auth/token":
+			tokenCalls++
+			token := "stale-token"
+			if tokenCalls > 1 {
+				token = "fresh-token"
+			}
+			w.Header().Set("Content-Type", "application/json")
+			w.WriteHeader(http.StatusOK)
+			_, _ = w.Write([]byte(fmt.Sprintf(`{"access_token":%q,"token_type":"Bearer","expires_in":3600}`, token)))
+		case "/api/v1/integrations/creators":
+			resourceCalls++
+			switch r.Header.Get("Authorization") {
+			case "Bearer stale-token":
+				w.Header().Set("Content-Type", "application/json")
+				w.WriteHeader(http.StatusUnauthorized)
+				_, _ = w.Write([]byte(`{"error_code":"invalid_token","message":"expired"}`))
+			case "Bearer fresh-token":
+				w.Header().Set("Content-Type", "application/json")
+				w.WriteHeader(http.StatusOK)
+				_, _ = w.Write([]byte(`{"id":"creator-123","handle":"alice","status":"ACTIVE","created_at":"2026-01-01T00:00:00Z","updated_at":"2026-01-01T00:00:00Z"}`))
+			default:
+				t.Fatalf("unexpected Authorization header: %q", r.Header.Get("Authorization"))
+			}
+		default:
+			t.Fatalf("unexpected path: %s", r.URL.Path)
+		}
+	}))
+	defer server.Close()
+
+	qredex, err := New(Config{
+		ClientID:     "test-id",
+		ClientSecret: "test-secret",
+		BaseURL:      server.URL,
+	})
+	if err != nil {
+		t.Fatalf("New failed: %v", err)
+	}
+
+	creator, err := qredex.Creators().Create(context.Background(), CreateCreatorRequest{Handle: "alice"})
+	if err != nil {
+		t.Fatalf("Create failed: %v", err)
+	}
+	if creator.ID != "creator-123" {
+		t.Fatalf("creator.ID = %q, want creator-123", creator.ID)
+	}
+	if tokenCalls != 2 {
+		t.Fatalf("tokenCalls = %d, want 2", tokenCalls)
+	}
+	if resourceCalls != 2 {
+		t.Fatalf("resourceCalls = %d, want 2", resourceCalls)
+	}
+}
+
+func TestObservabilityRedactsPurchaseIntentToken(t *testing.T) {
+	logger := &captureLogger{}
+	tracer := &captureTracer{}
+	transport := NewFakeTransport()
+	transport.PushResponse(http.StatusOK, map[string]interface{}{
+		"access_token": "t",
+		"token_type":   "Bearer",
+		"expires_in":   3600,
+	})
+	transport.PushResponse(http.StatusOK, map[string]interface{}{
+		"id":                    "pit-123",
+		"merchant_id":           "merchant-123",
+		"store_id":              "store-123",
+		"link_id":               "link-123",
+		"token":                 "pit-secret-token",
+		"token_id":              "token-123",
+		"store_domain_snapshot": "example.com",
+		"issued_at":             "2026-01-01T00:00:00Z",
+		"expires_at":            "2026-01-02T00:00:00Z",
+		"integrity_version":     1,
+	})
+
+	httpClient := &http.Client{
+		Transport: transport,
+		Timeout:   10 * time.Second,
+	}
+	qredex, err := New(Config{
+		ClientID:     "id",
+		ClientSecret: "secret",
+		BaseURL:      "https://api.qredex.com",
+		HTTPClient:   httpClient,
+		Logger:       logger,
+		Tracer:       tracer,
+	})
+	if err != nil {
+		t.Fatalf("New failed: %v", err)
+	}
+
+	secret := "pit-super-secret"
+	if _, err := qredex.Intents().GetPurchaseIntent(context.Background(), secret); err != nil {
+		t.Fatalf("GetPurchaseIntent failed: %v", err)
+	}
+
+	for _, line := range logger.lines {
+		if strings.Contains(line, secret) {
+			t.Fatalf("logger leaked PIT token: %q", line)
+		}
+	}
+	if !logger.contains("{token}") {
+		t.Fatal("expected sanitized token marker in logs")
+	}
+	for _, event := range tracer.events {
+		if strings.Contains(fmt.Sprint(event["path"]), secret) {
+			t.Fatalf("tracer leaked PIT token: %#v", event)
+		}
+	}
+}
+
+type captureLogger struct {
+	lines []string
+}
+
+func (l *captureLogger) Printf(format string, v ...interface{}) {
+	l.lines = append(l.lines, fmt.Sprintf(format, v...))
+}
+
+func (l *captureLogger) contains(fragment string) bool {
+	for _, line := range l.lines {
+		if strings.Contains(line, fragment) {
+			return true
+		}
+	}
+	return false
+}
+
+type captureTracer struct {
+	events []map[string]interface{}
+}
+
+func (t *captureTracer) Trace(_ string, fields map[string]interface{}) {
+	cloned := make(map[string]interface{}, len(fields))
+	for key, value := range fields {
+		cloned[key] = value
+	}
+	t.events = append(t.events, cloned)
 }

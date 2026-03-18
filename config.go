@@ -20,19 +20,19 @@
 //	If you need additional information or have any questions, please email: copyright@qredex.com
 
 /*
-Package qredexsdk is the official Qredex Go server SDK for machine-to-machine integrations.
+Package qredex is the official Qredex Go server SDK for machine-to-machine integrations.
 
 It covers the Qredex Integrations API: creators, links, intents (IIT/PIT), orders, and refunds.
 Auth is handled automatically via the OAuth 2.0 client credentials flow.
 
 Quick start:
 
-	qredex, err := qredexsdk.Bootstrap()
+	qredex, err := qredex.Bootstrap()
 	if err != nil {
 	    log.Fatal(err)
 	}
 
-	creator, err := qredex.Creators().Create(ctx, qredexsdk.CreateCreatorRequest{
+	creator, err := qredex.Creators().Create(ctx, qredex.CreateCreatorRequest{
 	    Handle:      "alice",
 	    DisplayName: ptr("Alice"),
 	})
@@ -46,6 +46,7 @@ import (
 	"fmt"
 	"net/http"
 	"os"
+	"strconv"
 	"strings"
 	"time"
 )
@@ -135,7 +136,7 @@ type Config struct {
 	// ClientSecret is the OAuth client secret. Required. Never logged.
 	ClientSecret string
 	// Scopes is the optional list of OAuth scopes to request.
-	// Defaults to the full direct:api scope when empty.
+	// When empty, the server default scope for the client credentials is used.
 	Scopes []Scope
 	// Environment selects the Qredex API environment. Defaults to Production.
 	Environment Environment
@@ -242,12 +243,14 @@ func (c *Config) scopeString() string {
 //   - QREDEX_SCOPE        (space-separated scopes)
 //   - QREDEX_ENVIRONMENT  (production | staging | development)
 //   - QREDEX_BASE_URL     (overrides environment-resolved URL)
+//   - QREDEX_TIMEOUT_MS   (per-request timeout in milliseconds)
 func Bootstrap() (*Qredex, error) {
 	clientID := strings.TrimSpace(os.Getenv("QREDEX_CLIENT_ID"))
 	clientSecret := strings.TrimSpace(os.Getenv("QREDEX_CLIENT_SECRET"))
 	rawScope := strings.TrimSpace(os.Getenv("QREDEX_SCOPE"))
 	rawEnv := strings.TrimSpace(os.Getenv("QREDEX_ENVIRONMENT"))
 	rawBaseURL := strings.TrimSpace(os.Getenv("QREDEX_BASE_URL"))
+	rawTimeoutMS := strings.TrimSpace(os.Getenv("QREDEX_TIMEOUT_MS"))
 
 	if clientID == "" {
 		return nil, &ConfigurationError{Message: "Bootstrap requires QREDEX_CLIENT_ID environment variable"}
@@ -279,12 +282,24 @@ func Bootstrap() (*Qredex, error) {
 		}
 	}
 
+	var timeout time.Duration
+	if rawTimeoutMS != "" {
+		timeoutMS, err := strconv.Atoi(rawTimeoutMS)
+		if err != nil || timeoutMS <= 0 {
+			return nil, &ConfigurationError{
+				Message: fmt.Sprintf("QREDEX_TIMEOUT_MS must be a positive integer; got %q", rawTimeoutMS),
+			}
+		}
+		timeout = time.Duration(timeoutMS) * time.Millisecond
+	}
+
 	cfg := Config{
 		ClientID:     clientID,
 		ClientSecret: clientSecret,
 		Environment:  env,
 		BaseURL:      rawBaseURL,
 		Scopes:       scopes,
+		Timeout:      timeout,
 	}
 
 	return New(cfg)

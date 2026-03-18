@@ -75,8 +75,8 @@ func Example_createCreator() {
 	ctx := context.Background()
 	creator, err := qredex.Creators().Create(ctx, CreateCreatorRequest{
 		Handle:      "alice",
-		DisplayName: strPtr("Alice"),
-		Email:       strPtr("alice@example.com"),
+		DisplayName: String("Alice"),
+		Email:       String("alice@example.com"),
 	})
 	if err != nil {
 		log.Fatal(err)
@@ -101,7 +101,7 @@ func Example_createLink() {
 		CreatorID:             creatorID,
 		LinkName:              "spring-launch",
 		DestinationPath:       "/collections/spring",
-		AttributionWindowDays: intPtr(30),
+		AttributionWindowDays: Int(30),
 	})
 	if err != nil {
 		log.Fatal(err)
@@ -127,7 +127,7 @@ func Example_issueIIT() {
 		log.Fatal(err)
 	}
 
-	log.Printf("Issued IIT: %s", iit.Token)
+	log.Printf("Issued IIT: %s", iit.TokenID)
 }
 
 // Example_lockPIT demonstrates locking a Purchase Intent Token.
@@ -142,13 +142,13 @@ func Example_lockPIT() {
 
 	pit, err := qredex.Intents().LockPurchaseIntent(ctx, LockPurchaseIntentRequest{
 		Token:  iitToken,
-		Source: strPtr("browser-cart"),
+		Source: String("backend-cart"),
 	})
 	if err != nil {
 		log.Fatal(err)
 	}
 
-	log.Printf("Locked PIT: %s", pit.Token)
+	log.Printf("Locked PIT: %s", pit.TokenID)
 }
 
 // Example_recordOrder demonstrates recording a paid order.
@@ -165,8 +165,8 @@ func Example_recordOrder() {
 		StoreID:             storeID,
 		ExternalOrderID:     "order-12345",
 		Currency:            "USD",
-		TotalPrice:          floatPtr(99.99),
-		PurchaseIntentToken: strPtr("eyJhbGc..."), // Replace with actual PIT
+		TotalPrice:          Float64(99.99),
+		PurchaseIntentToken: String("eyJhbGc..."), // Replace with actual PIT
 	})
 	if err != nil {
 		log.Fatal(err)
@@ -184,8 +184,8 @@ func Example_listOrders() {
 
 	ctx := context.Background()
 	page, err := qredex.Orders().List(ctx, ListOrdersRequest{
-		Page: intPtr(1),
-		Size: intPtr(10),
+		Page: Int(1),
+		Size: Int(10),
 	})
 	if err != nil {
 		log.Fatal(err)
@@ -211,7 +211,7 @@ func Example_recordRefund() {
 		StoreID:          storeID,
 		ExternalOrderID:  "order-12345",
 		ExternalRefundID: "refund-12345-1",
-		RefundTotal:      floatPtr(25.50),
+		RefundTotal:      Float64(25.50),
 	})
 	if err != nil {
 		log.Fatal(err)
@@ -233,8 +233,3 @@ func Example_scopes() {
 	_ = ScopeIntentsWrite
 	// Output:
 }
-
-// Helper functions for pointer creation
-func strPtr(s string) *string     { return &s }
-func intPtr(i int) *int           { return &i }
-func floatPtr(f float64) *float64 { return &f }

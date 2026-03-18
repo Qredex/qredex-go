@@ -1,67 +1,74 @@
+<!--
+     ▄▄▄▄
+   ▄█▀▀███▄▄              █▄
+   ██    ██ ▄             ██
+   ██    ██ ████▄▄█▀█▄ ▄████ ▄█▀█▄▀██ ██▀
+   ██  ▄ ██ ██   ██▄█▀ ██ ██ ██▄█▀  ███
+    ▀█████▄▄█▀  ▄▀█▄▄▄▄█▀███▄▀█▄▄▄▄██ ██▄
+         ▀█
+
+   Copyright (C) 2026 — 2026, Qredex, LTD. All Rights Reserved.
+
+   DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
+
+   Licensed under the Apache License, Version 2.0. See LICENSE for the full license text.
+   You may not use this file except in compliance with that License.
+   Unless required by applicable law or agreed to in writing, software distributed under the
+   License is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND,
+   either express or implied. See the License for the specific language governing permissions
+   and limitations under the License.
+
+   If you need additional information or have any questions, please email: copyright@qredex.com
+-->
+
 # Changelog
 
-All notable changes to the Qredex Go SDK will be documented in this file.
+All notable changes to the Qredex Go SDK are documented here.
 
-The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
-and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
+The format is based on Keep a Changelog and this project follows Semantic Versioning.
+
+## [Unreleased]
+
+### Added
+
+- Local request validation with `RequestValidationError`
+- `QREDEX_TIMEOUT_MS` support in `Bootstrap()`
+- API reference documentation in `docs/API_REFERENCE.md`
+
+### Changed
+
+- Sanitized observability output now uses secret-safe paths
+- 401 responses now clear the token cache and retry once with a fresh token
+- Public docs, examples, CI, and release metadata were aligned with the actual Go SDK
+- `GetLatestUnlocked` is now documented as a deprecated recovery helper
+
+### Fixed
+
+- Test suite no longer imports an undeclared test dependency
+- Examples no longer print raw IIT or PIT token values
+- Release workflow now publishes the correct Go module path
 
 ## [0.2.0] - 2026-03-18
 
 ### Fixed
-- GET requests (list operations) now correctly serialize filter parameters as URL query parameters instead of a JSON request body.
-- `Config.UserAgentSuffix` is now propagated to all outgoing resource requests.  Previously it was set only on token requests.
+
+- GET requests now serialize filter parameters as URL query parameters instead of a JSON request body
+- `Config.UserAgentSuffix` is now propagated to resource requests
 
 ### Changed
-- Read operations (GET/HEAD) now retry on HTTP 429 and 5xx responses in addition to network-level failures when `Config.RetryMax > 0`.  The `Retry-After` header is honoured on 429 responses.
-- `Content-Type: application/json` is no longer set on GET/HEAD requests.
+
+- Read operations now retry on HTTP 429 and 5xx responses when `Config.RetryMax > 0`
+- `Content-Type: application/json` is no longer set on GET or HEAD requests
 
 ### Added
-- `isRetryableStatus` internal helper (429 and 5xx).
-- `structToQueryParams` internal helper — reflection-based struct-to-query-string encoder used by all list operations.
-- Example programs for all canonical operations: `create-creator`, `create-link`, `issue-iit`, `lock-pit`, `record-order`, `list-orders`, `record-refund`.
-- `CONTRIBUTING.md` with development, testing, naming, and PR guidelines.
-- `SECURITY.md` with vulnerability reporting and responsible-disclosure policy.
-- Additional test coverage: GET query parameter serialisation, 5xx retry, `UserAgentSuffix` propagation, network error handling, `structToQueryParams` corner cases.
+
+- Example programs for the canonical operations
+- `CONTRIBUTING.md`
+- `SECURITY.md`
+- Additional test coverage for GET query encoding, retries, and user-agent propagation
 
 ## [0.1.0] - 2026-01-17
 
-### Initial Release
+### Added
 
-First production-ready release of the Qredex Go SDK.
-
-#### Features
-- **Authentication**: OAuth 2.0 client credentials flow with automatic token caching
-- **Configuration**: Environment-based (`Bootstrap()`) and explicit (`New()`) initialization
-- **Resources**:
-  - `Creators().Create()`, `Creators().Get()`, `Creators().List()`
-  - `Links().Create()`, `Links().Get()`, `Links().List()`, `Links().GetStats()`
-  - `Intents().IssueInfluenceIntentToken()`, `Intents().LockPurchaseIntent()`, `Intents().GetPurchaseIntent()`, `Intents().GetLatestUnlocked()`
-  - `Orders().RecordPaidOrder()`, `Orders().List()`, `Orders().GetDetails()`
-  - `Refunds().RecordRefund()`
-- **Error Handling**: Typed errors (`AuthenticationError`, `AuthorizationError`, `ValidationError`, `NotFoundError`, `ConflictError`, `RateLimitError`, `NetworkError`)
-- **Testing**: Comprehensive test suite with `FakeTransport` for mocking HTTP responses
-- **Documentation**: README, Integration Guide, Error Handling Guide, GoDoc examples
-
-#### Technical Details
-- Minimum Go version: 1.21
-- No external dependencies (standard library only)
-- Thread-safe token caching
-- Context-aware API methods
-- Configurable HTTP client, timeout, retry behavior
-
-#### Known Issues
-- None
-
-#### Migration Notes
-- Initial release — no migration required
-
----
-
-## Legend
-- `[Unreleased]` — Changes not yet released
-- `[Added]` — New features
-- `[Changed]` — Changes in existing functionality
-- `[Deprecated]` — Soon-to-be removed features
-- `[Removed]` — Removed features
-- `[Fixed]` — Bug fixes
-- `[Security]` — Security improvements
+- Initial Go SDK release

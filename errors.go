@@ -39,6 +39,16 @@ func (e *ConfigurationError) Error() string {
 	return "qredex: configuration error: " + e.Message
 }
 
+// RequestValidationError is returned when the SDK rejects an invalid request
+// before making any network call.
+type RequestValidationError struct {
+	Message string
+}
+
+func (e *RequestValidationError) Error() string {
+	return "qredex: request validation error: " + e.Message
+}
+
 // APIError is the base error type for non-network API responses from Qredex.
 // It carries the HTTP status, error_code, message, and correlation identifiers.
 type APIError struct {
@@ -107,6 +117,25 @@ func (e *NetworkError) Error() string {
 // Unwrap returns the underlying cause of the network error.
 func (e *NetworkError) Unwrap() error { return e.Cause }
 
+// ResponseDecodingError wraps a protocol-level failure that occurred after a successful HTTP response
+// was received but before the payload could be decoded into the expected SDK model.
+type ResponseDecodingError struct {
+	// Message describes the decoding failure.
+	Message string
+	// Cause is the underlying decode error, if available.
+	Cause error
+}
+
+func (e *ResponseDecodingError) Error() string {
+	if e.Cause != nil {
+		return fmt.Sprintf("qredex: response decoding error: %s: %v", e.Message, e.Cause)
+	}
+	return "qredex: response decoding error: " + e.Message
+}
+
+// Unwrap returns the underlying cause of the decoding error.
+func (e *ResponseDecodingError) Unwrap() error { return e.Cause }
+
 // IsAuthenticationError reports whether err is an AuthenticationError (HTTP 401).
 func IsAuthenticationError(err error) bool {
 	var authenticationError *AuthenticationError
@@ -153,6 +182,20 @@ func IsRateLimitError(err error) bool {
 func IsNetworkError(err error) bool {
 	var networkError *NetworkError
 	ok := errors.As(err, &networkError)
+	return ok
+}
+
+// IsResponseDecodingError reports whether err is a ResponseDecodingError.
+func IsResponseDecodingError(err error) bool {
+	var responseDecodingError *ResponseDecodingError
+	ok := errors.As(err, &responseDecodingError)
+	return ok
+}
+
+// IsRequestValidationError reports whether err is a RequestValidationError.
+func IsRequestValidationError(err error) bool {
+	var requestValidationError *RequestValidationError
+	ok := errors.As(err, &requestValidationError)
 	return ok
 }
 

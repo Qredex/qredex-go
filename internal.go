@@ -75,6 +75,7 @@ type tokenProvider struct {
 	config *Config
 	cache  *tokenCache
 	client *http.Client
+	mu     sync.Mutex
 }
 
 func newTokenProvider(config *Config, httpClient *http.Client) *tokenProvider {
@@ -134,6 +135,14 @@ func (tp *tokenProvider) getToken(ctx context.Context) (string, error) {
 		return cached.accessToken, nil
 	}
 
+	tp.mu.Lock()
+	defer tp.mu.Unlock()
+
+	cached = tp.cache.get()
+	if cached != nil {
+		return cached.accessToken, nil
+	}
+
 	token, err := tp.issueToken(ctx)
 	if err != nil {
 		return "", err
@@ -141,6 +150,10 @@ func (tp *tokenProvider) getToken(ctx context.Context) (string, error) {
 
 	tp.cache.set(token.AccessToken, token.ExpiresIn)
 	return token.AccessToken, nil
+}
+
+func (tp *tokenProvider) clearTokenCache() {
+	tp.cache.clear()
 }
 
 // httpClient manages HTTP requests with auth, retries, and error handling.
@@ -179,16 +192,17 @@ func newHTTPClient(config *Config, httpCli *http.Client, tp *tokenProvider) *htt
 
 // request executes an HTTP request with automatic auth, retries on safe operations, and error handling.
 func (hc *httpClient) request(ctx context.Context, method, path string, body interface{}, result interface{}) error {
-	return hc.doRequest(ctx, method, path, body, result, 0)
+	return hc.doRequest(ctx, method, path, body, result, 0, false)
 }
 
-func (hc *httpClient) doRequest(ctx context.Context, method, path string, body interface{}, result interface{}, attempt int) error {
+func (hc *httpClient) doRequest(ctx context.Context, method, path string, body interface{}, result interface{}, attempt int, authRetried bool) error {
 	token, err := hc.tokenProvider.getToken(ctx)
 	if err != nil {
 		return err
 	}
 
 	rawURL := hc.baseURL + path
+	loggedPath := sanitizedPath(path)
 	startTime := time.Now()
 	var reqBody io.Reader
 	isReadMethod := method == "GET" || method == "HEAD"
@@ -224,19 +238,19 @@ func (hc *httpClient) doRequest(ctx context.Context, method, path string, body i
 		}
 	}
 	if hc.logger != nil {
-		hc.logger.Printf("[qredex] %s %s", method, rawURL)
+		hc.logger.Printf("[qredex] %s %s", method, loggedPath)
 	}
 	if hc.tracer != nil {
 		hc.tracer.Trace("qredex.request", map[string]interface{}{
 			"method":  method,
-			"url":     rawURL,
+			"path":    loggedPath,
 			"attempt": attempt,
 		})
 	}
 	if hc.metrics != nil {
 		hc.metrics.Record("qredex.request.count", 1, map[string]string{
 			"method": method,
-			"path":   path,
+			"path":   loggedPath,
 		})
 	}
 
@@ -250,7 +264,7 @@ func (hc *httpClient) doRequest(ctx context.Context, method, path string, body i
 			delay := backoffDelay(attempt, hc.retryBaseDelay, hc.retryMaxDelay)
 			select {
 			case <-time.After(delay):
-				return hc.doRequest(ctx, method, path, body, result, attempt+1)
+				return hc.doRequest(ctx, method, path, body, result, attempt+1, authRetried)
 			case <-ctx.Done():
 				return &NetworkError{Message: "context canceled", Cause: ctx.Err()}
 			}
@@ -266,10 +280,14 @@ func (hc *httpClient) doRequest(ctx context.Context, method, path string, body i
 	}
 
 	if resp.StatusCode >= 400 {
+		if resp.StatusCode == http.StatusUnauthorized && !authRetried {
+			hc.tokenProvider.clearTokenCache()
+			return hc.doRequest(ctx, method, path, body, result, attempt, true)
+		}
 		if hc.metrics != nil {
 			hc.metrics.Record("qredex.request.error", 1, map[string]string{
 				"method": method,
-				"path":   path,
+				"path":   loggedPath,
 				"status": strconv.Itoa(resp.StatusCode),
 			})
 		}
@@ -290,7 +308,7 @@ func (hc *httpClient) doRequest(ctx context.Context, method, path string, body i
 			}
 			select {
 			case <-time.After(delay):
-				return hc.doRequest(ctx, method, path, body, result, attempt+1)
+				return hc.doRequest(ctx, method, path, body, result, attempt+1, authRetried)
 			case <-ctx.Done():
 				return &NetworkError{Message: "context canceled", Cause: ctx.Err()}
 			}
@@ -301,7 +319,7 @@ func (hc *httpClient) doRequest(ctx context.Context, method, path string, body i
 
 	if result != nil && len(respBody) > 0 {
 		if err := json.Unmarshal(respBody, result); err != nil {
-			return &NetworkError{Message: "failed to parse response", Cause: err}
+			return &ResponseDecodingError{Message: "failed to parse response", Cause: err}
 		}
 	}
 
@@ -309,7 +327,7 @@ func (hc *httpClient) doRequest(ctx context.Context, method, path string, body i
 		latency := float64(time.Since(startTime).Milliseconds())
 		hc.metrics.Record("qredex.request.latency_ms", latency, map[string]string{
 			"method": method,
-			"path":   path,
+			"path":   loggedPath,
 		})
 	}
 	return nil
@@ -419,4 +437,17 @@ func backoffDelay(attempt int, baseDelay, maxDelay time.Duration) time.Duration 
 		delay = maxDelay
 	}
 	return delay
+}
+
+func sanitizedPath(path string) string {
+	cleanPath, _, _ := strings.Cut(path, "?")
+	parts := strings.Split(cleanPath, "/")
+	if len(parts) >= 6 && parts[1] == "api" && parts[2] == "v1" && parts[3] == "integrations" && parts[4] == "intents" {
+		switch parts[5] {
+		case "token", "lock", "latest-unlocked":
+		default:
+			parts[5] = "{token}"
+		}
+	}
+	return strings.Join(parts, "/")
 }
