@@ -352,7 +352,8 @@ Environment is a string constant representing the Qredex API environment:
 GitHub Actions workflows in `.github/workflows/`:
 
 - **`ci.yml`** — runs on PR/push: `go build`, `go test -race`, `go vet`, `golangci-lint`, `go fmt`
-- **`release.yml`** — creates GitHub Release from semantic-version tags (`v*`)
+- **`create-release-tag-on-version-change.yml`** — creates the semantic-version tag when `SDKVersion` changes on `main`
+- **`release.yml`** — validates the tagged release and creates the GitHub Release from semantic-version tags (`v*`)
 
 ## Documentation Rules
 
@@ -399,7 +400,8 @@ When preparing a release or making release-related documentation updates, you mu
 - If the release guide conflicts with the repository state, stop and surface the conflict instead of guessing.
 - Run `go build ./...`, `go test ./...`, `go vet ./...`, and `golangci-lint run ./...` as the pre-release verification step.
 - Releases are semantic-version Git tags such as `v0.2.0`.
-- GitHub Actions validates tagged releases and creates a GitHub Release.
+- Preferred release path: update `SDKVersion`, move the matching changelog entries out of `Unreleased`, and push to `main`.
+- GitHub Actions creates the tag from the version bump, then validates the tagged release and creates a GitHub Release.
 - Go consumers should install tagged releases: `go get github.com/Qredex/qredex-go@v0.2.0`
 
 ## Before Starting Work

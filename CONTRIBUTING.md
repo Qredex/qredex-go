@@ -52,3 +52,4 @@ golangci-lint run ./...
 
 - Update `CHANGELOG.md` when behavior changes.
 - Keep `SDKVersion` and the release tag aligned.
+- Preferred release path: bump `SDKVersion`, move `CHANGELOG.md` out of `Unreleased`, and push to `main` so the tag is created automatically.

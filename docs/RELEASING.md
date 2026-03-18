@@ -47,6 +47,16 @@ golangci-lint run ./...
 
 ## Tagging
 
+Preferred path:
+
+1. Update `SDKVersion` in `config.go`
+2. Move the matching entries from `Unreleased` to `## [X.Y.Z] - YYYY-MM-DD` in `CHANGELOG.md`
+3. Push the version bump to `main`
+
+The `create-release-tag-from-version-bump` workflow will create and push `vX.Y.Z` automatically when `SDKVersion` changes on `main`.
+
+Manual fallback:
+
 ```bash
 git tag -a v0.2.0 -m "Release v0.2.0"
 git push origin v0.2.0
