@@ -30,6 +30,8 @@ import (
 	"strings"
 	"testing"
 	"time"
+
+	"github.com/stretchr/testify/require"
 )
 
 func TestBootstrap_Valid(t *testing.T) {
@@ -246,7 +248,9 @@ func TestHTTPClient_Request_Success(t *testing.T) {
 		}
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusOK)
-		w.Write([]byte(`{"id": "test-id", "handle": "alice"}`))
+		if _, err := w.Write([]byte(`{"id": "test-id", "handle": "alice"}`)); err != nil {
+			t.Fatalf("w.Write failed: %v", err)
+		}
 	}))
 	defer server.Close()
 
