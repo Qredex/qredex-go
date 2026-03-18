@@ -51,7 +51,7 @@ import (
 )
 
 // SDKVersion is the current release version of the Qredex Go SDK.
-const SDKVersion = "0.1.0"
+const SDKVersion = "0.2.0"
 
 // Environment identifies the Qredex API environment.
 type Environment string
@@ -80,6 +80,7 @@ func (e Environment) baseURL() string {
 // Scope is a Qredex OAuth scope string for the Integrations API.
 type Scope string
 
+// Scope constants are retained for public API contract compliance, even if not referenced internally.
 const (
 	// ScopeAPI grants access to the full direct API surface.
 	ScopeAPI Scope = "direct:api"
@@ -100,6 +101,8 @@ const (
 	// ScopeIntentsWrite grants write access to intents.
 	ScopeIntentsWrite Scope = "direct:intents:write"
 )
+
+// Scope constants are retained for public API contract compliance, even if not referenced internally.
 
 // Logger is a minimal logger interface for SDK observability.
 type Logger interface {

@@ -259,6 +259,7 @@ func (hc *httpClient) doRequest(ctx context.Context, method, path string, body i
 	}
 	defer func() { _ = resp.Body.Close() }() // explicitly ignore error per linter
 
+	// Explicitly ignore error from resp.Body.Close per linter warning and repo policy.
 	respBody, err := io.ReadAll(resp.Body)
 	if err != nil {
 		return &NetworkError{Message: "failed to read response body", Cause: err}
