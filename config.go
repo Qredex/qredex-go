@@ -42,6 +42,7 @@ See README.md and INTEGRATION_GUIDE.md for full documentation.
 package qredex
 
 import (
+	"context"
 	"fmt"
 	"net/http"
 	"os"
@@ -110,6 +111,19 @@ type Tracer interface {
 	Trace(event string, fields map[string]interface{})
 }
 
+// Metrics is a minimal metrics interface for SDK observability.
+// Never record secrets, tokens, or PII in metric names or labels.
+type Metrics interface {
+	Record(metric string, value float64, labels map[string]string)
+}
+
+// IdempotencyKeyProvider allows injection of idempotency keys for write requests.
+type IdempotencyKeyProvider interface {
+	// GetIdempotencyKey returns an idempotency key for the given request context.
+	// If an empty string is returned, no Idempotency-Key header will be set.
+	GetIdempotencyKey(ctx context.Context, method, path string, body interface{}) string
+}
+
 // Config holds all configuration for the Qredex SDK.
 // Build one explicitly with New, or load from environment with Bootstrap.
 type Config struct {
@@ -144,6 +158,10 @@ type Config struct {
 	Logger Logger
 	// Tracer is a minimal tracer interface for SDK observability.
 	Tracer Tracer
+
+	// Metrics is a minimal metrics interface for SDK observability.
+	// Optional. If set, the SDK will record request/response metrics.
+	Metrics Metrics
 
 	// IdempotencyKeyProvider allows injection of idempotency keys for write requests.
 	IdempotencyKeyProvider IdempotencyKeyProvider
@@ -209,77 +227,6 @@ func (c *Config) scopeString() string {
 		parts[i] = string(s)
 	}
 	return strings.Join(parts, " ")
-}
-
-// ConfigBuilder provides a fluent builder for Config.
-type ConfigBuilder struct {
-	cfg Config
-}
-
-// NewConfigBuilder returns a new ConfigBuilder.
-func NewConfigBuilder() *ConfigBuilder {
-	return &ConfigBuilder{cfg: Config{}}
-}
-
-// WithClientID sets the ClientID.
-func (b *ConfigBuilder) WithClientID(id string) *ConfigBuilder {
-	b.cfg.ClientID = id
-	return b
-}
-
-// WithClientSecret sets the ClientSecret.
-func (b *ConfigBuilder) WithClientSecret(secret string) *ConfigBuilder {
-	b.cfg.ClientSecret = secret
-	return b
-}
-
-// WithScopes sets the OAuth scopes.
-func (b *ConfigBuilder) WithScopes(scopes ...Scope) *ConfigBuilder {
-	b.cfg.Scopes = scopes
-	return b
-}
-
-// WithEnvironment sets the environment.
-func (b *ConfigBuilder) WithEnvironment(env Environment) *ConfigBuilder {
-	b.cfg.Environment = env
-	return b
-}
-
-// WithBaseURL sets the base URL.
-func (b *ConfigBuilder) WithBaseURL(url string) *ConfigBuilder {
-	b.cfg.BaseURL = url
-	return b
-}
-
-// WithHTTPClient sets a custom HTTP client.
-func (b *ConfigBuilder) WithHTTPClient(client *http.Client) *ConfigBuilder {
-	b.cfg.HTTPClient = client
-	return b
-}
-
-// WithTimeout sets the request timeout.
-func (b *ConfigBuilder) WithTimeout(timeout time.Duration) *ConfigBuilder {
-	b.cfg.Timeout = timeout
-	return b
-}
-
-// WithUserAgentSuffix sets the user agent suffix.
-func (b *ConfigBuilder) WithUserAgentSuffix(suffix string) *ConfigBuilder {
-	b.cfg.UserAgentSuffix = suffix
-	return b
-}
-
-// WithRetry configures retry parameters.
-func (b *ConfigBuilder) WithRetry(max int, baseDelay, maxDelay time.Duration) *ConfigBuilder {
-	b.cfg.RetryMax = max
-	b.cfg.RetryBaseDelay = baseDelay
-	b.cfg.RetryMaxDelay = maxDelay
-	return b
-}
-
-// Build returns the constructed Config.
-func (b *ConfigBuilder) Build() Config {
-	return b.cfg
 }
 
 // Bootstrap creates a Qredex instance from environment variables.

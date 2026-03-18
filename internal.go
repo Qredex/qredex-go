@@ -113,7 +113,7 @@ func (tp *tokenProvider) issueToken(ctx context.Context) (*OAuthTokenResponse, e
 	if err != nil {
 		return nil, &NetworkError{Message: "token request failed", Cause: err}
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }() // explicitly ignore error per linter
 
 	if resp.StatusCode != http.StatusOK {
 		return nil, parseAPIError(resp)
@@ -143,11 +143,7 @@ func (tp *tokenProvider) getToken(ctx context.Context) (string, error) {
 	return token.AccessToken, nil
 }
 
-// clearCache clears the cached token.
-func (tp *tokenProvider) clearCache() {
-	tp.cache.clear()
-}
-
+// httpClient manages HTTP requests with auth, retries, and error handling.
 // httpClient manages HTTP requests with auth, retries, and error handling.
 type httpClient struct {
 	baseURL                string
@@ -160,6 +156,7 @@ type httpClient struct {
 	retryMaxDelay          time.Duration
 	logger                 Logger
 	tracer                 Tracer
+	metrics                Metrics
 	idempotencyKeyProvider IdempotencyKeyProvider
 }
 
@@ -175,6 +172,7 @@ func newHTTPClient(config *Config, httpCli *http.Client, tp *tokenProvider) *htt
 		retryMaxDelay:          config.resolvedRetryMaxDelay(),
 		logger:                 config.Logger,
 		tracer:                 config.Tracer,
+		metrics:                config.Metrics,
 		idempotencyKeyProvider: config.IdempotencyKeyProvider,
 	}
 }
@@ -191,6 +189,7 @@ func (hc *httpClient) doRequest(ctx context.Context, method, path string, body i
 	}
 
 	rawURL := hc.baseURL + path
+	startTime := time.Now()
 	var reqBody io.Reader
 	isReadMethod := method == "GET" || method == "HEAD"
 
@@ -234,6 +233,12 @@ func (hc *httpClient) doRequest(ctx context.Context, method, path string, body i
 			"attempt": attempt,
 		})
 	}
+	if hc.metrics != nil {
+		hc.metrics.Record("qredex.request.count", 1, map[string]string{
+			"method": method,
+			"path":   path,
+		})
+	}
 
 	ctxWithTimeout, cancel := context.WithTimeout(ctx, hc.timeout)
 	defer cancel()
@@ -252,7 +257,7 @@ func (hc *httpClient) doRequest(ctx context.Context, method, path string, body i
 		}
 		return &NetworkError{Message: "HTTP request failed", Cause: err}
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }() // explicitly ignore error per linter
 
 	respBody, err := io.ReadAll(resp.Body)
 	if err != nil {
@@ -260,6 +265,13 @@ func (hc *httpClient) doRequest(ctx context.Context, method, path string, body i
 	}
 
 	if resp.StatusCode >= 400 {
+		if hc.metrics != nil {
+			hc.metrics.Record("qredex.request.error", 1, map[string]string{
+				"method": method,
+				"path":   path,
+				"status": strconv.Itoa(resp.StatusCode),
+			})
+		}
 		// Retry safe methods on 429 or 5xx responses.
 		if attempt < hc.retryMax && isReadMethod && isRetryableStatus(resp.StatusCode) {
 			delay := backoffDelay(attempt, hc.retryBaseDelay, hc.retryMaxDelay)
@@ -292,6 +304,13 @@ func (hc *httpClient) doRequest(ctx context.Context, method, path string, body i
 		}
 	}
 
+	if hc.metrics != nil {
+		latency := float64(time.Since(startTime).Milliseconds())
+		hc.metrics.Record("qredex.request.latency_ms", latency, map[string]string{
+			"method": method,
+			"path":   path,
+		})
+	}
 	return nil
 }
 

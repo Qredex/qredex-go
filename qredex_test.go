@@ -160,11 +160,13 @@ func TestTokenProvider_IssueToken(t *testing.T) {
 		}
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusOK)
-		w.Write([]byte(`{
+		if _, err := w.Write([]byte(`{
 			"access_token": "test-token",
 			"token_type": "Bearer",
 			"expires_in": 3600
-		}`))
+		}`)); err != nil {
+			t.Fatalf("w.Write failed: %v", err)
+		}
 	}))
 	defer server.Close()
 
@@ -283,7 +285,9 @@ func TestGETQueryParams(t *testing.T) {
 		capturedBody, _ = io.ReadAll(r.Body)
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusOK)
-		w.Write([]byte(`{"items":[],"page":1,"size":10,"total_elements":0,"total_pages":0}`))
+		if _, err := w.Write([]byte(`{"items":[],"page":1,"size":10,"total_elements":0,"total_pages":0}`)); err != nil {
+			t.Fatalf("w.Write failed: %v", err)
+		}
 	}))
 	defer server.Close()
 
@@ -325,13 +329,17 @@ func TestUserAgentSuffix(t *testing.T) {
 		if r.URL.Path == "/api/v1/auth/token" {
 			w.Header().Set("Content-Type", "application/json")
 			w.WriteHeader(http.StatusOK)
-			w.Write([]byte(`{"access_token":"t","token_type":"Bearer","expires_in":3600}`))
+			if _, err := w.Write([]byte(`{"access_token":"t","token_type":"Bearer","expires_in":3600}`)); err != nil {
+				t.Fatalf("w.Write failed: %v", err)
+			}
 			return
 		}
 		capturedUA = r.Header.Get("User-Agent")
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusOK)
-		w.Write([]byte(`{"items":[],"page":1,"size":10,"total_elements":0,"total_pages":0}`))
+		if _, err := w.Write([]byte(`{"items":[],"page":1,"size":10,"total_elements":0,"total_pages":0}`)); err != nil {
+			t.Fatalf("w.Write failed: %v", err)
+		}
 	}))
 	defer server.Close()
 
@@ -367,12 +375,16 @@ func TestRetryOn5xx(t *testing.T) {
 		callCount++
 		if callCount < 3 {
 			w.WriteHeader(http.StatusServiceUnavailable)
-			w.Write([]byte(`{"error_code":"service_unavailable","message":"try again"}`))
+			if _, err := w.Write([]byte(`{"error_code":"service_unavailable","message":"try again"}`)); err != nil {
+				t.Fatalf("w.Write failed: %v", err)
+			}
 			return
 		}
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusOK)
-		w.Write([]byte(`{"items":[],"page":1,"size":10,"total_elements":0,"total_pages":0}`))
+		if _, err := w.Write([]byte(`{"items":[],"page":1,"size":10,"total_elements":0,"total_pages":0}`)); err != nil {
+			t.Fatalf("w.Write failed: %v", err)
+		}
 	}))
 	defer server.Close()
 

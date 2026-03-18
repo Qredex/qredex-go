@@ -404,11 +404,69 @@ Before deploying to production:
 - [ ] Rate limit errors respect `Retry-After` headers
 - [ ] Conflict errors are handled for idempotent order submission
 
+
 ### Observability
 
-- [ ] Request IDs are logged for debugging
-- [ ] Error codes are captured for monitoring
-- [ ] Attribution resolution status is tracked
+The SDK provides pluggable observability hooks for logging, tracing, and metrics. All hooks are optional and safe by default:
+
+- **No secrets, tokens, or PII are ever logged, traced, or recorded as metrics.**
+- Hooks are configured via the `Config` struct.
+
+#### Logger
+
+Implement the `Logger` interface to receive log messages (e.g., HTTP requests, retries):
+
+```go
+type Logger interface {
+    Printf(format string, v ...interface{})
+}
+```
+
+Example:
+```go
+q, err := qredex.New(qredex.Config{
+    Logger: log.Default(), // stdlib logger
+    // ...other config
+})
+```
+
+#### Tracer
+
+Implement the `Tracer` interface to receive trace events (e.g., request lifecycle):
+
+```go
+type Tracer interface {
+    Trace(event string, fields map[string]interface{})
+}
+```
+
+Example:
+```go
+q, err := qredex.New(qredex.Config{
+    Tracer: myTracer{}, // implements Trace
+    // ...other config
+})
+```
+
+#### Metrics
+
+Implement the `Metrics` interface to record metrics (e.g., request count, error count, latency):
+
+```go
+type Metrics interface {
+    Record(metric string, value float64, labels map[string]string)
+}
+```
+
+Example:
+```go
+q, err := qredex.New(qredex.Config{
+    Metrics: myMetrics{}, // implements Record
+    // ...other config
+})
+```
+
+**Note:** All observability hooks are optional. If not set, the SDK operates silently and safely by default.
 
 ### Testing
 
