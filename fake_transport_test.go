@@ -303,7 +303,7 @@ func TestCanonicalFlow(t *testing.T) {
 	// Step 1: Create creator
 	creator, err := qredex.Creators().Create(ctx, CreateCreatorRequest{
 		Handle:      "alice",
-		DisplayName: strPtr("Alice"),
+		DisplayName: String("Alice"),
 	})
 	if err != nil {
 		t.Fatalf("Create creator failed: %v", err)
@@ -340,7 +340,7 @@ func TestCanonicalFlow(t *testing.T) {
 	// Step 4: Lock PIT
 	pit, err := qredex.Intents().LockPurchaseIntent(ctx, LockPurchaseIntentRequest{
 		Token:  iit.Token,
-		Source: strPtr("backend-cart"),
+		Source: String("backend-cart"),
 	})
 	if err != nil {
 		t.Fatalf("Lock PIT failed: %v", err)
@@ -354,8 +354,8 @@ func TestCanonicalFlow(t *testing.T) {
 		StoreID:             "store-123",
 		ExternalOrderID:     "order-100045",
 		Currency:            "USD",
-		TotalPrice:          floatPtr(110.00),
-		PurchaseIntentToken: strPtr(pit.Token),
+		TotalPrice:          Float64(110.00),
+		PurchaseIntentToken: String(pit.Token),
 	})
 	if err != nil {
 		t.Fatalf("Record paid order failed: %v", err)
@@ -372,7 +372,7 @@ func TestCanonicalFlow(t *testing.T) {
 		StoreID:          "store-123",
 		ExternalOrderID:  "order-100045",
 		ExternalRefundID: "refund-100045-1",
-		RefundTotal:      floatPtr(25.00),
+		RefundTotal:      Float64(25.00),
 	})
 	if err != nil {
 		t.Fatalf("Record refund failed: %v", err)
@@ -474,7 +474,7 @@ func TestErrorHandling(t *testing.T) {
 			StoreID:         "store-123",
 			ExternalOrderID: "order-123",
 			Currency:        "USD",
-			TotalPrice:      floatPtr(100.00),
+			TotalPrice:      Float64(100.00),
 		})
 
 		if err == nil {

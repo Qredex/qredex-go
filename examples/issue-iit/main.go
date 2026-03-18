@@ -56,11 +56,11 @@ func main() {
 
 	iit, err := q.Intents().IssueInfluenceIntentToken(ctx, qredex.IssueInfluenceIntentTokenRequest{
 		LinkID:      linkID,
-		LandingPath: qredex.String("/collections/spring"),
+		LandingPath: strPtr("/collections/spring"),
 		// Optionally capture visitor signals for integrity scoring.
-		// IPHash:        qredex.String(hashIP(r.RemoteAddr)),
-		// UserAgentHash: qredex.String(hashUA(r.Header.Get("User-Agent"))),
-		// Referrer:      qredex.String(r.Referer()),
+		// IPHash:        strPtr(hashIP(r.RemoteAddr)),
+		// UserAgentHash: strPtr(hashUA(r.Header.Get("User-Agent"))),
+		// Referrer:      strPtr(r.Referer()),
 	})
 	if err != nil {
 		log.Fatalf("Failed to issue IIT: %v", err)
@@ -69,3 +69,5 @@ func main() {
 	log.Printf("Issued IIT: token_id=%s", iit.TokenID)
 	log.Printf("  Expires at: %s", iit.ExpiresAt)
 }
+
+func strPtr(s string) *string { return &s }

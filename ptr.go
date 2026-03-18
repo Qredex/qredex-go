@@ -19,42 +19,21 @@
 //
 //	If you need additional information or have any questions, please email: copyright@qredex.com
 
-// Package main demonstrates creating a creator via the Qredex Integrations API.
-//
-// Required environment variables:
-//
-//	QREDEX_CLIENT_ID
-//	QREDEX_CLIENT_SECRET
-package main
+package qredex
 
-import (
-	"context"
-	"log"
+import "time"
 
-	"github.com/Qredex/qredex-go"
-)
+// String returns a pointer to v. Use it for optional request fields.
+func String(v string) *string { return &v }
 
-func main() {
-	q, err := qredex.Bootstrap()
-	if err != nil {
-		log.Fatalf("Failed to initialise Qredex SDK: %v", err)
-	}
+// Int returns a pointer to v. Use it for optional request fields.
+func Int(v int) *int { return &v }
 
-	ctx := context.Background()
+// Float64 returns a pointer to v. Use it for optional request fields.
+func Float64(v float64) *float64 { return &v }
 
-	creator, err := q.Creators().Create(ctx, qredex.CreateCreatorRequest{
-		Handle:      "alice",
-		DisplayName: strPtr("Alice"),
-		Email:       strPtr("alice@example.com"),
-		Socials: map[string]string{
-			"instagram": "@alice",
-		},
-	})
-	if err != nil {
-		log.Fatalf("Failed to create creator: %v", err)
-	}
+// Bool returns a pointer to v. Use it for optional request fields.
+func Bool(v bool) *bool { return &v }
 
-	log.Printf("Created creator: id=%s handle=%s status=%s", creator.ID, creator.Handle, creator.Status)
-}
-
-func strPtr(s string) *string { return &s }
+// Time returns a pointer to v. Use it for optional request fields.
+func Time(v time.Time) *time.Time { return &v }

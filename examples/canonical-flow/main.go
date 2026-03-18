@@ -57,8 +57,8 @@ func main() {
 	log.Println("Step 1: Creating creator...")
 	creator, err := q.Creators().Create(ctx, qredex.CreateCreatorRequest{
 		Handle:      fmt.Sprintf("demo-%d", time.Now().Unix()),
-		DisplayName: qredex.String("Demo Creator"),
-		Email:       qredex.String("demo@example.com"),
+		DisplayName: strPtr("Demo Creator"),
+		Email:       strPtr("demo@example.com"),
 	})
 	if err != nil {
 		log.Fatalf("Failed to create creator: %v", err)
@@ -77,7 +77,7 @@ func main() {
 		CreatorID:             creator.ID,
 		LinkName:              "demo-spring-launch",
 		DestinationPath:       "/products/spring",
-		AttributionWindowDays: qredex.Int(30),
+		AttributionWindowDays: intPtr(30),
 	})
 	if err != nil {
 		log.Fatalf("Failed to create link: %v", err)
@@ -89,7 +89,7 @@ func main() {
 	log.Println("Step 3: Issuing Influence Intent Token (IIT)...")
 	iit, err := q.Intents().IssueInfluenceIntentToken(ctx, qredex.IssueInfluenceIntentTokenRequest{
 		LinkID:      link.ID,
-		LandingPath: qredex.String("/products/spring"),
+		LandingPath: strPtr("/products/spring"),
 	})
 	if err != nil {
 		log.Fatalf("Failed to issue IIT: %v", err)
@@ -100,7 +100,7 @@ func main() {
 	log.Println("Step 4: Locking Purchase Intent Token (PIT)...")
 	pit, err := q.Intents().LockPurchaseIntent(ctx, qredex.LockPurchaseIntentRequest{
 		Token:  iit.Token,
-		Source: qredex.String("demo-backend"),
+		Source: strPtr("demo-backend"),
 	})
 	if err != nil {
 		log.Fatalf("Failed to lock PIT: %v", err)
@@ -113,11 +113,11 @@ func main() {
 	order, err := q.Orders().RecordPaidOrder(ctx, qredex.RecordPaidOrderRequest{
 		StoreID:             storeID,
 		ExternalOrderID:     fmt.Sprintf("demo-order-%d", time.Now().Unix()),
-		OrderNumber:         qredex.String("DEMO-001"),
+		OrderNumber:         strPtr("DEMO-001"),
 		Currency:            "USD",
-		TotalPrice:          qredex.Float64(99.99),
-		PaidAt:              &[]time.Time{time.Now()}[0],
-		PurchaseIntentToken: qredex.String(pit.Token),
+		TotalPrice:          floatPtr(99.99),
+		PaidAt:              timePtr(time.Now()),
+		PurchaseIntentToken: strPtr(pit.Token),
 	})
 	if err != nil {
 		log.Fatalf("Failed to record paid order: %v", err)
@@ -136,8 +136,8 @@ func main() {
 		StoreID:          storeID,
 		ExternalOrderID:  order.ExternalOrderID,
 		ExternalRefundID: fmt.Sprintf("demo-refund-%d", time.Now().Unix()),
-		RefundTotal:      qredex.Float64(25.00),
-		RefundedAt:       &[]time.Time{time.Now()}[0],
+		RefundTotal:      floatPtr(25.00),
+		RefundedAt:       timePtr(time.Now()),
 	})
 	if err != nil {
 		log.Fatalf("Failed to record refund: %v", err)
@@ -153,3 +153,8 @@ func main() {
 	log.Printf("Order: %s (%s)", order.ID, order.ResolutionStatus)
 	log.Printf("Refund: %s", refund.ID)
 }
+
+func strPtr(s string) *string        { return &s }
+func intPtr(i int) *int              { return &i }
+func floatPtr(f float64) *float64    { return &f }
+func timePtr(t time.Time) *time.Time { return &t }

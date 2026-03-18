@@ -56,7 +56,7 @@ func main() {
 
 	pit, err := q.Intents().LockPurchaseIntent(ctx, qredex.LockPurchaseIntentRequest{
 		Token:  iitToken,
-		Source: qredex.String("backend-checkout"),
+		Source: strPtr("backend-checkout"),
 	})
 	if err != nil {
 		log.Fatalf("Failed to lock PIT: %v", err)
@@ -74,3 +74,5 @@ func main() {
 	}
 	log.Printf("  Store the raw PIT token securely with the order context for paid-order submission.")
 }
+
+func strPtr(s string) *string { return &s }
