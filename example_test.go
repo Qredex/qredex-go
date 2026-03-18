@@ -220,6 +220,20 @@ func Example_recordRefund() {
 	log.Printf("Updated order: %s", updated.ID)
 }
 
+// Example_scopes demonstrates all available OAuth scope constants.
+func Example_scopes() {
+	_ = ScopeAPI
+	_ = ScopeLinksRead
+	_ = ScopeLinksWrite
+	_ = ScopeCreatorsRead
+	_ = ScopeCreatorsWrite
+	_ = ScopeOrdersRead
+	_ = ScopeOrdersWrite
+	_ = ScopeIntentsRead
+	_ = ScopeIntentsWrite
+	// Output:
+}
+
 // Helper functions for pointer creation
 func strPtr(s string) *string     { return &s }
 func intPtr(i int) *int           { return &i }
