@@ -1,0 +1,85 @@
+version: 1
+project:
+  name: qredex-go
+  description: Go client for Qredex integrations
+  type: library
+metadata:
+  team: sdk
+  owner: qredex
+  repo_class: go-sdk
+runtimes:
+  go: '>=1.21'
+execution:
+  preferred: native
+  supported:
+    - native
+tools:
+  go: '*'
+tasks:
+  setup:
+    description: Download Go module dependencies
+    category: setup
+    run: go mod download
+    safe_for_agent: true
+  build:
+    description: Build the Go SDK
+    category: build
+    run: go build ./...
+    depends_on:
+      - setup
+    safe_for_agent: true
+  test:
+    description: Run the Go test suite
+    category: test
+    run: go test ./...
+    depends_on:
+      - setup
+    safe_for_agent: true
+  vet:
+    description: Run Go vet
+    category: test
+    run: go vet ./...
+    depends_on:
+      - setup
+    safe_for_agent: true
+  ci:
+    description: Run the Go verification suite
+    category: test
+    script: |
+      go test ./...
+      go vet ./...
+    depends_on:
+      - setup
+    safe_for_agent: true
+agent:
+  entrypoint: setup
+  default_task: ci
+  safe_tasks:
+    - setup
+    - build
+    - test
+    - vet
+    - ci
+  verify_after_changes:
+    - test
+    - vet
+    - ci
+  writable_paths:
+    - .
+    - examples
+    - README.md
+    - SECURITY.md
+    - AGENTS.md
+  protected_paths:
+    - go.sum
+    - target
+    - ota.yaml
+  notes: |
+    Use the Ota workflow first for setup, validation, and task execution.
+    Treat Ota as the default workflow, the way npm is the default in Node repos.
+    Use `ota validate` to verify the contract.
+    Use `ota doctor` to inspect readiness and agent guidance.
+    Use `ota tasks` to discover runnable repo actions.
+    Use `ota run setup` to prepare the repo.
+    Use `ota run ci` to run the canonical verification path.
+    Keep the Go SDK deterministic and simple.
