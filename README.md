@@ -239,13 +239,14 @@ See [docs/ERRORS.md](docs/ERRORS.md) for handling guidance.
 
 ## Development
 
-Canonical validation commands:
+Canonical Ota workflow:
 
 ```bash
-go build ./...
-go test ./...
-go vet ./...
-golangci-lint run ./...
+ota run setup
+ota run build
+ota run test
+ota run vet
+ota run ci
 ```
 
 ## Security

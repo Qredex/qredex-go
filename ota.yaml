@@ -15,6 +15,7 @@ execution:
     - native
 tools:
   go: '*'
+  golangci-lint: '*'
 tasks:
   setup:
     description: Download Go module dependencies
@@ -42,12 +43,47 @@ tasks:
     depends_on:
       - setup
     safe_for_agent: true
+  lint:
+    description: Run golangci-lint
+    category: test
+    run: golangci-lint run ./...
+    depends_on:
+      - setup
+    safe_for_agent: true
+  coverage:
+    description: Run the Go test suite with coverage
+    category: test
+    run: go test -v -race -coverprofile=coverage.txt -covermode=atomic ./...
+    depends_on:
+      - setup
+    safe_for_agent: true
+  format:
+    description: Check Go formatting
+    category: test
+    script: |
+      go fmt ./...
+      git diff --exit-code
+    depends_on:
+      - setup
+    safe_for_agent: true
+  module:
+    description: Verify the Go module graph
+    category: test
+    script: |
+      go mod verify
+      go mod tidy
+      git diff --exit-code
+    depends_on:
+      - setup
+    safe_for_agent: true
   ci:
     description: Run the Go verification suite
     category: test
     script: |
+      go build ./...
       go test ./...
       go vet ./...
+      golangci-lint run ./...
     depends_on:
       - setup
     safe_for_agent: true
@@ -59,10 +95,18 @@ agent:
     - build
     - test
     - vet
+    - lint
+    - coverage
+    - format
+    - module
     - ci
   verify_after_changes:
     - test
     - vet
+    - lint
+    - coverage
+    - format
+    - module
     - ci
   writable_paths:
     - .
