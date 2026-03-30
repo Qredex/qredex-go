@@ -28,6 +28,8 @@ This document defines how any AI agent (or engineer acting as an agent) must wor
 This SDK is not a generic HTTP wrapper.
 It is a Qredex product surface and must remain aligned with the platform contract.
 
+The authoritative machine-readable agent contract for this repository lives in [`ota.yaml`](ota.yaml). This file is human-facing guidance that must stay aligned with that contract and must not override it.
+
 ## Engineering Standards
 
 Engineer this like a serious public infrastructure SDK.
@@ -96,6 +98,9 @@ Use the minimum context, tokens, tool calls, edits, and validation needed to com
 - **Avoid speculative work.** Do not expand scope unless the task or integration risk requires it.
 - **Keep communication compressed, direct, and high-signal.**
 - **Escalate only when necessary.** If materially more usage would be required to increase certainty, state the trade-off briefly before doing broader exploration or heavier validation.
+- **Tell the user when the task should move to a higher reasoning level** (`high` or `xhigh`) for architecture, wide refactors, or deep review.
+- **If this repo has an `ota` manifest, use `ota validate`, `ota doctor`, `ota tasks`, and `ota run` first; treat `ota` as the canonical task runner.**
+- **If a new repo command is needed, update `ota` so the command becomes discoverable and reusable instead of creating one-off shell instructions.**
 
 ## System Overview
 
