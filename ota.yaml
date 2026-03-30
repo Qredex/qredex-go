@@ -19,11 +19,15 @@ tools:
 tasks:
   setup:
     description: Download Go module dependencies
+    notes: |
+      Use this first after cloning or when module dependencies change.
     category: setup
     run: go mod download
     safe_for_agent: true
   build:
     description: Build the Go SDK
+    notes: |
+      Use this to confirm the Go package still builds cleanly.
     category: build
     run: go build ./...
     depends_on:
@@ -31,6 +35,8 @@ tasks:
     safe_for_agent: true
   test:
     description: Run the Go test suite
+    notes: |
+      Use this for the standard Go unit test pass.
     category: test
     run: go test ./...
     depends_on:
@@ -38,6 +44,8 @@ tasks:
     safe_for_agent: true
   vet:
     description: Run Go vet
+    notes: |
+      Use this for static analysis of suspicious Go code patterns.
     category: test
     run: go vet ./...
     depends_on:
@@ -45,6 +53,8 @@ tasks:
     safe_for_agent: true
   lint:
     description: Run golangci-lint
+    notes: |
+      Use this for the full lint gate before merging changes.
     category: test
     run: golangci-lint run ./...
     depends_on:
@@ -52,6 +62,8 @@ tasks:
     safe_for_agent: true
   coverage:
     description: Run the Go test suite with coverage
+    notes: |
+      Use this when you need coverage data or a heavier validation run.
     category: test
     run: go test -v -race -coverprofile=coverage.txt -covermode=atomic ./...
     depends_on:
@@ -59,6 +71,8 @@ tasks:
     safe_for_agent: true
   format:
     description: Check Go formatting
+    notes: |
+      Use this before committing to catch formatting drift early.
     category: test
     script: |
       go fmt ./...
@@ -68,6 +82,8 @@ tasks:
     safe_for_agent: true
   module:
     description: Verify the Go module graph
+    notes: |
+      Use this when you want to confirm module metadata is still consistent.
     category: test
     script: |
       go mod verify
@@ -78,6 +94,8 @@ tasks:
     safe_for_agent: true
   ci:
     description: Run the Go verification suite
+    notes: |
+      Use this as the canonical local verification path before merging changes.
     category: test
     script: |
       go build ./...
