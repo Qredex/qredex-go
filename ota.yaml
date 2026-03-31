@@ -56,7 +56,17 @@ tasks:
     notes: |
       Use this for the full lint gate before merging changes.
     category: test
-    run: golangci-lint run ./...
+    script: |
+      if ! command -v golangci-lint >/dev/null 2>&1; then
+        go install github.com/golangci/golangci-lint/cmd/golangci-lint@v1.64.8
+        lint_bin_dir="$(go env GOBIN)"
+        if [ -z "$lint_bin_dir" ]; then
+          lint_bin_dir="$(go env GOPATH)/bin"
+        fi
+        export PATH="$lint_bin_dir:$PATH"
+      fi
+
+      golangci-lint run ./...
     depends_on:
       - setup
     safe_for_agent: true
@@ -101,10 +111,90 @@ tasks:
       go build ./...
       go test ./...
       go vet ./...
+      if ! command -v golangci-lint >/dev/null 2>&1; then
+        go install github.com/golangci/golangci-lint/cmd/golangci-lint@v1.64.8
+        lint_bin_dir="$(go env GOBIN)"
+        if [ -z "$lint_bin_dir" ]; then
+          lint_bin_dir="$(go env GOPATH)/bin"
+        fi
+        export PATH="$lint_bin_dir:$PATH"
+      fi
+
       golangci-lint run ./...
     depends_on:
       - setup
     safe_for_agent: true
+  release:check:
+    description: Run the release verification suite
+    notes: |
+      Use this as the release gate before tagging or pushing a release.
+      Example: ota run release:check
+      Typical flow:
+        ota run release:check
+        ota run release:version --version x.y.z
+    category: release
+    script: |
+      go build ./...
+      go test ./...
+      go vet ./...
+      if ! command -v golangci-lint >/dev/null 2>&1; then
+        go install github.com/golangci/golangci-lint/cmd/golangci-lint@v1.64.8
+        lint_bin_dir="$(go env GOBIN)"
+        if [ -z "$lint_bin_dir" ]; then
+          lint_bin_dir="$(go env GOPATH)/bin"
+        fi
+        export PATH="$lint_bin_dir:$PATH"
+      fi
+
+      golangci-lint run ./...
+    depends_on:
+      - setup
+    safe_for_agent: true
+  release:version:
+    description: Bump the SDK version and promote the changelog
+    notes: |
+      Use this when preparing a new release version.
+      Example: `ota run release:version --version 0.2.1`
+      Run `ota run release:check` before this task.
+      This updates the SDKVersion constant in config.go and promotes the
+      Unreleased changelog entry into the new version section.
+      The task forwards `--version` into `OTA_INPUT_VERSION`.
+    category: release
+    depends_on:
+      - release:check
+    script: |
+      version="${OTA_INPUT_VERSION}"
+      if [ -z "$version" ]; then
+        echo "Usage: ota run release:version --version <x.y.z>" >&2
+        exit 1
+      fi
+
+      if ! printf '%s' "$version" | grep -Eq '^[0-9]+\.[0-9]+\.[0-9]+([.-][0-9A-Za-z.-]+)?(\+[0-9A-Za-z.-]+)?$'; then
+        echo "Invalid semver version: $version" >&2
+        exit 1
+      fi
+
+      release_date="$(date -u +%F)"
+
+      perl -0pi -e 's/const SDKVersion = "[^"]+"/const SDKVersion = "'$version'"/' config.go
+      echo "Updated config.go SDKVersion to $version"
+
+      if grep -Eq '^## \['"$version"'\] - ' CHANGELOG.md; then
+        echo "CHANGELOG.md already contains release $version"
+        exit 0
+      fi
+
+      if ! grep -Eq '^## \[Unreleased\]$' CHANGELOG.md; then
+        echo "CHANGELOG.md is missing the Unreleased heading" >&2
+        exit 1
+      fi
+
+      perl -0pi -e 's/^## \[Unreleased\]\n\n/## [Unreleased]\n\n## ['"$version"'] - '"$release_date"'\n\n/m' CHANGELOG.md
+      echo "Updated CHANGELOG.md for $version"
+    inputs:
+      version:
+        description: New release version to apply to config.go
+        required: true
 agent:
   entrypoint: setup
   default_task: ci
@@ -114,6 +204,7 @@ agent:
     - test
     - vet
     - lint
+    - release:check
     - coverage
     - format
     - module

@@ -32,28 +32,19 @@
 ## Pre-Release Checklist
 
 1. Review repository history since the last tag.
-2. Update `CHANGELOG.md`.
-3. Update `SDKVersion` in `config.go`.
-4. Run:
-
-```bash
-go build ./...
-go test ./...
-go vet ./...
-golangci-lint run ./...
-```
-
-5. Verify examples and docs still match the current API.
+2. Run `ota run release:version --version X.Y.Z`.
+3. Run `ota run release:check`.
+4. Verify examples and docs still match the current API.
 
 ## Tagging
 
 Preferred path:
 
-1. Update `SDKVersion` in `config.go`
-2. Move the matching entries from `Unreleased` to `## [X.Y.Z] - YYYY-MM-DD` in `CHANGELOG.md`
+1. Run `ota run release:version --version X.Y.Z`
+2. Run `ota run release:check`
 3. Push the version bump to `main`
 
-The `create-release-tag-from-version-bump` workflow will create and push `vX.Y.Z` automatically when `SDKVersion` changes on `main`.
+The `create-release-tag-on-version-change.yml` workflow will create and push `vX.Y.Z` automatically when `SDKVersion` changes on `main`.
 
 Manual fallback:
 

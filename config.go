@@ -52,7 +52,7 @@ import (
 )
 
 // SDKVersion is the current release version of the Qredex Go SDK.
-const SDKVersion = "0.2.0"
+const SDKVersion = "0.2.1"
 
 // Environment identifies the Qredex API environment.
 type Environment string
