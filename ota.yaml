@@ -128,27 +128,18 @@ tasks:
     description: Run the release verification suite
     notes: |
       Use this as the release gate before tagging or pushing a release.
+      This task composes build, test, vet, and lint.
       Example: ota run release:check
       Typical flow:
         ota run release:check
         ota run release:version --version x.y.z
     category: release
-    script: |
-      go build ./...
-      go test ./...
-      go vet ./...
-      if ! command -v golangci-lint >/dev/null 2>&1; then
-        go install github.com/golangci/golangci-lint/cmd/golangci-lint@v1.64.8
-        lint_bin_dir="$(go env GOBIN)"
-        if [ -z "$lint_bin_dir" ]; then
-          lint_bin_dir="$(go env GOPATH)/bin"
-        fi
-        export PATH="$lint_bin_dir:$PATH"
-      fi
-
-      golangci-lint run ./...
     depends_on:
-      - setup
+      - build
+      - test
+      - vet
+      - lint
+    script: ":"
     safe_for_agent: true
   release:version:
     description: Bump the SDK version and promote the changelog
