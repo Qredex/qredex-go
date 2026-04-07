@@ -32,7 +32,7 @@
 ## Pre-Release Checklist
 
 1. Review repository history since the last tag.
-2. Run `ota run release:version --version X.Y.Z`.
+2. Run `ota run release:version --version minor` or pass an explicit semver.
 3. Run `ota run release:check`.
 4. Verify examples and docs still match the current API.
 
@@ -40,7 +40,7 @@
 
 Preferred path:
 
-1. Run `ota run release:version --version X.Y.Z`
+1. Run `ota run release:version --version major|minor|patch` or an explicit semver
 2. Run `ota run release:check`
 3. Push the version bump to `main`
 
