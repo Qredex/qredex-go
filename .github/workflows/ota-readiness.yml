@@ -55,6 +55,7 @@ jobs:
           ota-version: 1.4.4
           archive: true
           annotate: true
+          fail-on-error: false
           comment-pr: true
           comment-pr-only: true
           artifact-name: ota-readiness
