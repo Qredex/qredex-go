@@ -30,6 +30,7 @@ on:
   workflow_dispatch:
 
 permissions:
+  actions: read
   contents: read
   pull-requests: write
 
@@ -52,11 +53,8 @@ jobs:
         with:
           command: receipt
           path: .
-          ota-version: 1.4.7
+          ota-version: 1.6.1
           archive: true
-          annotate: true
           fail-on-error: false
-          comment-pr: true
-          comment-pr-only: true
           artifact-name: ota-readiness
           github-token: ${{ github.token }}

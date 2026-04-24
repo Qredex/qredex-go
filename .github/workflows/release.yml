@@ -40,26 +40,22 @@ jobs:
         with:
           fetch-depth: 0
 
+      - name: Setup ota
+        uses: ota-run/setup@v1
+        with:
+          ota-version: 1.6.1
+
       - name: Set up Go
         uses: actions/setup-go@v6
         with:
           go-version: "1.23"
           cache: true
 
-      - name: Install golangci-lint
-        run: go install github.com/golangci/golangci-lint/cmd/golangci-lint@v1.64.8
+      - name: Validate ota contract
+        run: ota validate
 
-      - name: Build
-        run: go build -v ./...
-
-      - name: Test
-        run: go test -v ./...
-
-      - name: Vet
-        run: go vet ./...
-
-      - name: Lint
-        run: golangci-lint run ./...
+      - name: Release checks
+        run: ota run release:check --mode native --stream
 
       - name: Extract release notes
         id: release_notes

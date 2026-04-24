@@ -10,9 +10,16 @@ metadata:
 runtimes:
   go: '>=1.21'
 execution:
-  preferred: native
+  preferred: container
   supported:
     - native
+    - container
+  lifecycle: ephemeral
+  backends:
+    container:
+      image: golang:1.25-bookworm
+      engines:
+        - docker
 tools:
   go: '*'
   golangci-lint: '*'

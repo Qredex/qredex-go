@@ -39,20 +39,25 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
+      - name: Setup ota
+        uses: ota-run/setup@v1
+        with:
+          ota-version: 1.6.1
+
       - name: Set up Go
         uses: actions/setup-go@v5
         with:
           go-version: ${{ matrix.go }}
           cache: true
 
-      - name: Download dependencies
-        run: go mod download
+      - name: Validate ota contract
+        run: ota validate
 
       - name: Build
-        run: go build -v ./...
+        run: ota run build
 
-      - name: Test
-        run: go test -v -race -coverprofile=coverage.txt -covermode=atomic ./...
+      - name: Coverage
+        run: ota run coverage
 
       - name: Upload coverage to Codecov
         uses: codecov/codecov-action@v4
@@ -69,17 +74,22 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
+      - name: Setup ota
+        uses: ota-run/setup@v1
+        with:
+          ota-version: 1.6.1
+
       - name: Set up Go
         uses: actions/setup-go@v5
         with:
           go-version: "1.23"
           cache: true
 
-      - name: Install golangci-lint
-        run: go install github.com/golangci/golangci-lint/cmd/golangci-lint@v1.64.8
+      - name: Validate ota contract
+        run: ota validate
 
       - name: Run golangci-lint
-        run: golangci-lint run ./...
+        run: ota run lint
 
   vet:
     name: Vet
@@ -89,14 +99,22 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
+      - name: Setup ota
+        uses: ota-run/setup@v1
+        with:
+          ota-version: 1.6.1
+
       - name: Set up Go
         uses: actions/setup-go@v5
         with:
           go-version: "1.23"
           cache: true
 
+      - name: Validate ota contract
+        run: ota validate
+
       - name: Run go vet
-        run: go vet ./...
+        run: ota run vet
 
   format:
     name: Format
@@ -106,16 +124,22 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
+      - name: Setup ota
+        uses: ota-run/setup@v1
+        with:
+          ota-version: 1.6.1
+
       - name: Set up Go
         uses: actions/setup-go@v5
         with:
           go-version: "1.23"
           cache: true
 
+      - name: Validate ota contract
+        run: ota validate
+
       - name: Check formatting
-        run: |
-          go fmt ./...
-          git diff --exit-code
+        run: ota run format
 
   module:
     name: Module
@@ -125,14 +149,19 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
+      - name: Setup ota
+        uses: ota-run/setup@v1
+        with:
+          ota-version: 1.6.1
+
       - name: Set up Go
         uses: actions/setup-go@v5
         with:
           go-version: "1.23"
           cache: true
 
+      - name: Validate ota contract
+        run: ota validate
+
       - name: Verify module
-        run: |
-          go mod verify
-          go mod tidy
-          git diff --exit-code
+        run: ota run module
