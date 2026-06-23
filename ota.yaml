@@ -7,36 +7,54 @@ metadata:
   team: sdk
   owner: qredex
   repo_class: go-sdk
-runtimes:
-  go: '>=1.21'
+toolchains:
+  go:
+    version: '>=1.21'
 execution:
-  preferred: container
-  supported:
-    - native
-    - container
-  lifecycle: ephemeral
-  backends:
-    container:
-      image: golang:1.25-bookworm
-      engines:
-        - docker
+  default_context: app
+  contexts:
+    host:
+      backend: native
+    app:
+      backend: container
+      lifecycle: ephemeral
+      container:
+        image: golang:1.25-bookworm
+        engines:
+          - docker
 tools:
-  go: '*'
-  golangci-lint: '*'
+  golangci-lint:
+    version: "1.64.8"
+    acquisition:
+      provider: command
+      shell: sh
+      run: go install github.com/golangci/golangci-lint/cmd/golangci-lint@v1.64.8
 tasks:
   setup:
     description: Download Go module dependencies
     notes: |
       Use this first after cloning or when module dependencies change.
     category: setup
-    run: go mod download
-    safe_for_agent: true
+    prepare:
+      kind: dependency_hydration
+      medium: package_dependencies
+      source:
+        kind: go_modules
+        cwd: .
+    requirements:
+      toolchains:
+        - go
+    effects:
+      network: true
+      network_kind: dependency_hydration
   build:
     description: Build the Go SDK
     notes: |
       Use this to confirm the Go package still builds cleanly.
     category: build
-    run: go build ./...
+    command:
+      exe: go
+      args: [build, ./...]
     depends_on:
       - setup
     safe_for_agent: true
@@ -45,7 +63,9 @@ tasks:
     notes: |
       Use this for the standard Go unit test pass.
     category: test
-    run: go test ./...
+    command:
+      exe: go
+      args: [test, ./...]
     depends_on:
       - setup
     safe_for_agent: true
@@ -54,7 +74,9 @@ tasks:
     notes: |
       Use this for static analysis of suspicious Go code patterns.
     category: test
-    run: go vet ./...
+    command:
+      exe: go
+      args: [vet, ./...]
     depends_on:
       - setup
     safe_for_agent: true
@@ -63,26 +85,31 @@ tasks:
     notes: |
       Use this for the full lint gate before merging changes.
     category: test
-    script: |
-      if ! command -v golangci-lint >/dev/null 2>&1; then
-        go install github.com/golangci/golangci-lint/cmd/golangci-lint@v1.64.8
-        lint_bin_dir="$(go env GOBIN)"
-        if [ -z "$lint_bin_dir" ]; then
-          lint_bin_dir="$(go env GOPATH)/bin"
-        fi
-        export PATH="$lint_bin_dir:$PATH"
-      fi
-
-      golangci-lint run ./...
+    command:
+      exe: golangci-lint
+      args: [run, ./...]
     depends_on:
       - setup
+    requirements:
+      toolchains:
+        - go
+      tools:
+        golangci-lint: "*"
     safe_for_agent: true
   coverage:
     description: Run the Go test suite with coverage
     notes: |
       Use this when you need coverage data or a heavier validation run.
     category: test
-    run: go test -v -race -coverprofile=coverage.txt -covermode=atomic ./...
+    command:
+      exe: go
+      args:
+        - test
+        - -v
+        - -race
+        - -coverprofile=coverage.txt
+        - -covermode=atomic
+        - ./...
     depends_on:
       - setup
     safe_for_agent: true
@@ -114,22 +141,12 @@ tasks:
     notes: |
       Use this as the canonical local verification path before merging changes.
     category: test
-    script: |
-      go build ./...
-      go test ./...
-      go vet ./...
-      if ! command -v golangci-lint >/dev/null 2>&1; then
-        go install github.com/golangci/golangci-lint/cmd/golangci-lint@v1.64.8
-        lint_bin_dir="$(go env GOBIN)"
-        if [ -z "$lint_bin_dir" ]; then
-          lint_bin_dir="$(go env GOPATH)/bin"
-        fi
-        export PATH="$lint_bin_dir:$PATH"
-      fi
-
-      golangci-lint run ./...
-    depends_on:
-      - setup
+    aggregate:
+      tasks:
+        - build
+        - test
+        - vet
+        - lint
     safe_for_agent: true
   release:check:
     description: Run the release verification suite
@@ -141,12 +158,12 @@ tasks:
         ota run release:check
         ota run release:version --version x.y.z
     category: release
-    depends_on:
-      - build
-      - test
-      - vet
-      - lint
-    script: ":"
+    aggregate:
+      tasks:
+        - build
+        - test
+        - vet
+        - lint
     safe_for_agent: true
   release:version:
     description: Bump the SDK version and promote the changelog
@@ -160,7 +177,10 @@ tasks:
       The task forwards `--version` into `OTA_INPUT_VERSION`.
     category: release
     depends_on:
-      - release:check
+      - build
+      - test
+      - vet
+      - lint
     script: |
       input_version="${OTA_INPUT_VERSION}"
       if [ -z "$input_version" ]; then
@@ -229,16 +249,25 @@ tasks:
       version:
         description: Release bump selector or semantic version to apply to config.go
         required: true
+workflows:
+  default: verify
+  verify:
+    description: Canonical Go SDK verification path.
+    setup:
+      task: setup
+    run:
+      task: ci
 agent:
+  posture: readiness_strict
   bootstrap:
     ota:
       note: Only install ota if it is missing and installation is approved.
-      sh: curl -fsSL https://dist.ota.run/install.sh | sh
-      powershell: irm https://dist.ota.run/install.ps1 | iex
-  entrypoint: setup
+      source:
+        kind: version
+        version: v1.6.21
+  entrypoint: ci
   default_task: ci
   safe_tasks:
-    - setup
     - build
     - test
     - vet
@@ -257,14 +286,28 @@ agent:
     - module
     - ci
   writable_paths:
-    - .
+    - config.go
+    - errors.go
+    - example_test.go
     - examples
+    - fake_transport_test.go
+    - internal.go
+    - models.go
+    - ptr.go
+    - qredex.go
+    - qredex_test.go
+    - requests.go
+    - validation.go
+    - examples
+    - docs
     - README.md
+    - CHANGELOG.md
+    - CONTRIBUTING.md
     - SECURITY.md
     - AGENTS.md
   protected_paths:
+    - go.mod
     - go.sum
-    - target
     - ota.yaml
   notes: |
     Use the Ota workflow first for setup, validation, and task execution.
@@ -272,6 +315,5 @@ agent:
     Use `ota validate` to verify the contract.
     Use `ota doctor` to inspect readiness and agent guidance.
     Use `ota tasks` to discover runnable repo actions.
-    Use `ota run setup` to prepare the repo.
-    Use `ota run ci` to run the canonical verification path.
+    Use `ota up --workflow verify` for the canonical verification path.
     Keep the Go SDK deterministic and simple.
